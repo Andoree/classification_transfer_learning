@@ -1,0 +1,4 @@
+dataset,num_mapped_tweets,num_not_mapped_tweets,unique_drug_ids
+train.tsv,19781,341,789
+test.tsv,4297,457,574
+dev.tsv,4534,253,368
