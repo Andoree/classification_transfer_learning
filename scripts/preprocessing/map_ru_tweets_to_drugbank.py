@@ -54,7 +54,7 @@ def get_tweet_drug_from_list(tweet_text, drugs_list):
 
 def drug_list_to_token(lst, join_token, index):
     tokens_set = list(dict.fromkeys([t[index] if t[index] is not np.nan else None for t in lst]))
-    tokens_set = [t for t in tokens_set if t is not None]
+    tokens_set = ['~'.join(t.split(' + ')) for t in tokens_set if t is not None]
     if len(tokens_set) == 0:
         return None
     return join_token.join(tokens_set)
@@ -62,11 +62,11 @@ def drug_list_to_token(lst, join_token, index):
 
 def main():
     parser = ArgumentParser()
-    parser.add_argument('--input_tweets_path', default=r"../../data/russian_tweets/preprocessed/dev.tsv")
+    parser.add_argument('--input_tweets_path', default=r"../../data/russian_tweets/preprocessed/test.tsv")
     parser.add_argument('--input_drugbank_path', default=r"../../df_all_terms_ru_en.csv")
     parser.add_argument('--not_matched_path', default=r"../../data/not_matched/not_matched_ru_dev.tsv")
     parser.add_argument('--language', default=r"ru")
-    parser.add_argument('--output_path', default=r"../../data/ru_tweets_w_drugs/dev.tsv")
+    parser.add_argument('--output_path', default=r"../../data/ru_tweets_w_drugs/test.tsv")
     args = parser.parse_args()
 
     input_tweets_path = args.input_tweets_path
