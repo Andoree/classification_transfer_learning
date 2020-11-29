@@ -64,7 +64,7 @@ def main():
     parser = ArgumentParser()
     parser.add_argument('--input_tweets_path', default=r"../../data/russian_tweets/preprocessed/test.tsv")
     parser.add_argument('--input_drugbank_path', default=r"../../df_all_terms_ru_en.csv")
-    parser.add_argument('--not_matched_path', default=r"../../data/not_matched/not_matched_ru_dev.tsv")
+    parser.add_argument('--not_matched_path', default=r"../../data/not_matched/not_matched_ru_test.tsv")
     parser.add_argument('--language', default=r"ru")
     parser.add_argument('--output_path', default=r"../../data/ru_tweets_w_drugs/test.tsv")
     args = parser.parse_args()

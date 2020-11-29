@@ -21,8 +21,8 @@ def smiles_by_drug_ids(drug_ids_str: str, id_to_smiles_mapping: Dict[str, str], 
 def main():
     parser = ArgumentParser()
     parser.add_argument('--input_drugbank', default=r"../../data/drugbank_database.csv")
-    parser.add_argument('--input_tweets', default="../../data/ru_tweets_w_drugs/train.tsv")
-    parser.add_argument('--output_path', default=r"../../data/ru_tweets_w_smiles/train.tsv")
+    parser.add_argument('--input_tweets', default="../../data/ru_tweets_w_drugs/test.tsv")
+    parser.add_argument('--output_path', default=r"../../data/ru_tweets_w_smiles/test.tsv")
     args = parser.parse_args()
 
     drugbank_path = args.input_drugbank

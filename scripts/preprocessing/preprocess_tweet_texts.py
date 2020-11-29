@@ -10,9 +10,9 @@ from preprocessing_utils import preprocess_tweet_text
 
 def main():
     parser = ArgumentParser()
-    parser.add_argument('--input_dir', default=r"../../data/english_tweets/raw")
+    parser.add_argument('--input_dir', default=r"../../data/russian_tweets/raw")
     parser.add_argument('--lang', default="ru")
-    parser.add_argument('--output_dir', default=r"../../data/english_tweets/preprocessed")
+    parser.add_argument('--output_dir', default=r"../../data/russian_tweets/preprocessed")
     args = parser.parse_args()
 
     input_dir = args.input_dir
@@ -28,11 +28,17 @@ def main():
         if dataset_type == 'train' or dataset_type == 'dev':
             columns = ["class", "tweet"]
         elif dataset_type == 'test':
-            columns = ["tweet_id", "tweet"]
+            if language == "ru":
+                columns = ["label", "tweet"]
+            else:
+                columns = ["tweet_id", "tweet"]
         else:
             raise Exception(f"Invalid filename: {filename}")
+
         input_path = os.path.join(input_dir, filename)
         data_df = pd.read_csv(input_path, sep="\t", encoding="utf-8")[columns]
+        if dataset_type == "test" and language == "ru":
+            data_df.rename(columns={"label" : "class"}, inplace=True)
         data_df['tweet'] = data_df['tweet'].apply(lambda x: preprocess_tweet_text(x, emoji_mapping, amp_replace))
         output_path = os.path.join(output_dir, filename)
         data_df.to_csv(output_path, encoding="UTF-8", sep="\t", index=False, header=None)
