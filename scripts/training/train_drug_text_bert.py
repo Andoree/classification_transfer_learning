@@ -330,8 +330,8 @@ def main():
     test_df = pd.read_csv(test_path, sep='\t')
     bilingual_train_df = pd.read_csv(bilingual_train_path, sep='\t')
 
-    chemberta_model = RobertaModel.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k").to(device)
-    tokenizer = AutoTokenizer.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k")
+    chemberta_model = RobertaModel.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/").to(device)
+    tokenizer = AutoTokenizer.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/")
 
     bilingual_train_df["drug_embedding"] = encode_smiles(chemberta_model, tokenizer, max_chemberta_length,
                                                          bilingual_train_df.smiles.values)
@@ -342,7 +342,7 @@ def main():
     chemberta_model = chemberta_model.cpu()
     del chemberta_model
 
-    text_tokenizer = AutoTokenizer.from_pretrained("cimm-kzn/enrudr-bert")
+    text_tokenizer = AutoTokenizer.from_pretrained("cimm-kzn/enrudr-bert", cache_dir="models/")
 
     train_tweets_dataset = TweetsDataset(train_df, text_tokenizer, max_length=max_length)
     dev_tweets_dataset = TweetsDataset(dev_df, text_tokenizer, max_length=max_length)
@@ -365,14 +365,14 @@ def main():
     )
 
     torch.manual_seed(seed)
-    enrudr_model = AutoModel.from_pretrained("cimm-kzn/enrudr-bert")
+    enrudr_model = AutoModel.from_pretrained("cimm-kzn/enrudr-bert", cache_dir="models/")
     use_drug_embeddings = False
     bert_simple_clf = BertSimpleClassifier(enrudr_model, ).to(device)
     train_evaluate_model(seed, bert_simple_clf, use_drug_embeddings, learning_rate, train_loader, dev_loader,
                          test_loader, num_epochs, output_evaluation_path, output_dir, "ru-simple")
 
     torch.manual_seed(seed)
-    enrudr_model = AutoModel.from_pretrained("cimm-kzn/enrudr-bert")
+    enrudr_model = AutoModel.from_pretrained("cimm-kzn/enrudr-bert", cache_dir="models/")
     drug_enc_hid_dim = chemberta_model.config.hidden_size
     use_drug_embeddings = True
     bert_clf_with_drug_embeddings = BertClassifierWithDrugEmbeddings(enrudr_model,
@@ -382,14 +382,14 @@ def main():
                          test_loader, num_epochs, output_evaluation_path, output_dir, "ru-with-drugs")
 
     torch.manual_seed(seed)
-    enrudr_model = AutoModel.from_pretrained("cimm-kzn/enrudr-bert")
+    enrudr_model = AutoModel.from_pretrained("cimm-kzn/enrudr-bert", cache_dir="models/")
     use_drug_embeddings = False
     bert_simple_clf = BertSimpleClassifier(enrudr_model, ).to(device)
     train_evaluate_model(seed, bert_simple_clf, use_drug_embeddings, learning_rate, bilingual_train_loader, dev_loader,
                          test_loader, num_epochs, output_evaluation_path, output_dir, "ruen-simple")
 
     torch.manual_seed(seed)
-    enrudr_model = AutoModel.from_pretrained("cimm-kzn/enrudr-bert")
+    enrudr_model = AutoModel.from_pretrained("cimm-kzn/enrudr-bert", cache_dir="models/")
     drug_enc_hid_dim = enrudr_model.config.hidden_size
     use_drug_embeddings = True
     bert_clf_with_drug_embeddings = BertClassifierWithDrugEmbeddings(enrudr_model,
