@@ -166,6 +166,7 @@ def train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criteri
 
     best_valid_loss = float('inf')
     best_f1_score = 0.0
+    best_epoch = -1
 
     for epoch in tqdm(range(n_epochs)):
 
@@ -199,11 +200,13 @@ def train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criteri
 
         if valid_f1_score > best_f1_score:
             best_f1_score = valid_f1_score
+            best_epoch = epoch
             torch.save(bert_classifier.state_dict(), save_checkpoint_path)
 
         print(f'Epoch: {epoch+1:02} | Time: {epoch_mins}m {epoch_secs}s')
         print(f'\tTrain Loss: {train_loss:.3f}')
         print(f'\t Val. Loss: {valid_loss:.3f} |  Val. F1: {valid_f1_score:.3f}')
+    return best_epoch
 
 
 def predict(model, data_loader, use_drug_embeddings):
@@ -243,9 +246,9 @@ class BertSimpleClassifier(nn.Module):
 
         self.classifier = nn.Sequential(
             nn.Linear(bert_hidden_dim, 100),
-            nn.ReLU(),
-            nn.BatchNorm1d(100),
-            nn.Dropout(),
+            # nn.Tanh(),
+            # nn.BatchNorm1d(100),
+            # nn.Dropout(),
             nn.Linear(100, 1),
         )
 
@@ -269,9 +272,9 @@ class BertClassifierWithDrugEmbeddings(nn.Module):
 
         self.classifier = nn.Sequential(
             nn.Linear(bert_hidden_dim + drug_enc_hid_dim, 100),
-            nn.ReLU(),
-            nn.BatchNorm1d(100),
-            nn.Dropout(),
+            # nn.Tanh(),
+            # nn.BatchNorm1d(100),
+            # nn.Dropout(),
             nn.Linear(100, 1),
         )
 
@@ -299,7 +302,7 @@ def train_evaluate_model(seed, bert_classifier, use_drug_embeddings, learning_ra
     criterion = nn.BCEWithLogitsLoss()
 
     output_ckpt_path = os.path.join(output_model_dir, f"best-val-{model_chkpnt_name}.pt")
-    train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criterion, num_epochs, use_drug_embeddings,
+    best_epoch = train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criterion, num_epochs, use_drug_embeddings,
                    output_ckpt_path)
 
     bert_classifier.load_state_dict(torch.load(output_ckpt_path))
@@ -315,8 +318,8 @@ def train_evaluate_model(seed, bert_classifier, use_drug_embeddings, learning_ra
     test_model_f1 = f1_score(true_labels, pred_labels)
 
     with codecs.open(output_evaluation_path, 'a+', encoding="utf-8") as output_file:
-        output_file.write(f"{model_chkpnt_name},{val_model_precision},{val_model_recall},{val_model_f1}\n")
-        output_file.write(f"{model_chkpnt_name},{test_model_precision},{test_model_recall},{test_model_f1}\n")
+        output_file.write(f"{model_chkpnt_name},{best_epoch},{val_model_precision},{val_model_recall},{val_model_f1}\n")
+        output_file.write(f"{model_chkpnt_name},{best_epoch},{test_model_precision},{test_model_recall},{test_model_f1}\n")
 
     del bert_classifier
     del enrudr_model
