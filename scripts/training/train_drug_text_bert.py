@@ -1,8 +1,9 @@
 import codecs
 import configparser
 import os
-
+import random
 import time
+
 import numpy as np
 import pandas as pd
 import torch
@@ -12,7 +13,7 @@ from torch import nn
 from torch.utils.data import Dataset
 from tqdm import tqdm
 from transformers import AutoModel
-from transformers import AutoTokenizer, RobertaModel
+from transformers import AutoTokenizer
 
 device = "cuda" if torch.cuda.is_available else "cpu"
 
@@ -35,6 +36,32 @@ class TweetsDataset(Dataset):
 
     def __len__(self):
         return len(self.labels)
+
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self[i]
+
+
+def create_dataset_weights(dataset):
+    count_dict = {}
+    for item in dataset:
+        label = item["labels"]
+        if count_dict.get(label) is None:
+            count_dict[label] = 0
+        count_dict[label] += 1
+    num_samples = len(dataset)
+    label_to_weight = {}
+    assert num_samples == sum(count_dict.values())
+    for cl, count in count_dict.items():
+        freq = count / num_samples
+        label_to_weight[cl] = 1 - freq
+    sample_weights = np.empty(num_samples, dtype=np.float)
+    for i, item in enumerate(dataset):
+        label = item["labels"]
+        sample_weights[i] = label_to_weight[label]
+    return sample_weights
+
+
 
 
 def train(model, iterator, optimizer, criterion, train_history=None, valid_history=None, use_drug_embeddings=True):
@@ -319,7 +346,14 @@ def main():
     output_evaluation_path = os.path.join(output_dir, output_evaluation_filename)
 
     torch.manual_seed(seed)
+    torch.random.manual_seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.cuda.random.manual_seed(seed)
+    torch.cuda.random.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
+
 
     train_path = os.path.join(data_dir, "train.csv")
     test_path = os.path.join(data_dir, "test.csv")
@@ -332,8 +366,9 @@ def main():
     dev_df["drug_embedding"] = dev_df["drug_embedding"].apply(lambda x: embedding_str_to_numpy(x))
     test_df = pd.read_csv(test_path, )
     test_df["drug_embedding"] = test_df["drug_embedding"].apply(lambda x: embedding_str_to_numpy(x))
-    bilingual_train_df = pd.read_csv(bilingual_train_path,)
-    bilingual_train_df["drug_embedding"] = bilingual_train_df["drug_embedding"].apply(lambda x: embedding_str_to_numpy(x))
+    bilingual_train_df = pd.read_csv(bilingual_train_path, )
+    bilingual_train_df["drug_embedding"] = bilingual_train_df["drug_embedding"].apply(
+        lambda x: embedding_str_to_numpy(x))
 
     bilingual_train_df["drug_embedding"] = bilingual_train_df["drug_embedding"].apply(lambda x: torch.FloatTensor(x))
     train_df["drug_embedding"] = train_df["drug_embedding"].apply(lambda x: torch.FloatTensor(x))
