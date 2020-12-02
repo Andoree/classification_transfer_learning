@@ -159,7 +159,7 @@ def epoch_time(start_time, end_time):
 
 
 def train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criterion, n_epochs, use_drug_embeddings,
-                   save_checkpoint_path):
+                   save_checkpoint_path, output_evaluation_path):
     train_history = []
     valid_history = []
     valid_history_f1 = []
@@ -167,6 +167,9 @@ def train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criteri
     best_valid_loss = float('inf')
     best_f1_score = 0.0
     best_epoch = -1
+
+    eval_dir = os.path.dirname(output_evaluation_path)
+    train_statistics_path = os.path.join(eval_dir, "training_logs.txt")
 
     for epoch in tqdm(range(n_epochs)):
 
@@ -203,10 +206,53 @@ def train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criteri
             best_epoch = epoch
             torch.save(bert_classifier.state_dict(), save_checkpoint_path)
 
+
+
         print(f'Epoch: {epoch+1:02} | Time: {epoch_mins}m {epoch_secs}s')
         print(f'\tTrain Loss: {train_loss:.3f}')
         print(f'\t Val. Loss: {valid_loss:.3f} |  Val. F1: {valid_f1_score:.3f}')
+
+        with codecs.open(train_statistics_path, 'a+', encoding="utf-8") as output_path:
+            output_path.write(f'Epoch: {epoch+1:02} | Time: {epoch_mins}m {epoch_secs}s')
+            output_path.write(f'\tTrain Loss: {train_loss:.3f}')
+            output_path.write(f'\t Val. Loss: {valid_loss:.3f} |  Val. F1: {valid_f1_score:.3f}')
+
     return best_epoch
+
+
+def train_evaluate_model(seed, bert_classifier, use_drug_embeddings, learning_rate, train_loader, dev_loader,
+                         test_loader, num_epochs, output_evaluation_path, output_model_dir, model_chkpnt_name):
+    torch.manual_seed(seed)
+    enrudr_model = AutoModel.from_pretrained("cimm-kzn/enrudr-bert")
+    optimizer = optim.Adam(bert_classifier.parameters(), lr=learning_rate)
+    criterion = nn.BCEWithLogitsLoss()
+
+    output_ckpt_path = os.path.join(output_model_dir, f"best-val-{model_chkpnt_name}.pt")
+    best_epoch = train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criterion, num_epochs,
+                                use_drug_embeddings,
+                                output_ckpt_path, output_evaluation_path)
+
+    bert_classifier.load_state_dict(torch.load(output_ckpt_path))
+
+    true_labels, pred_labels = predict(bert_classifier, dev_loader, use_drug_embeddings)
+    val_model_precision = precision_score(true_labels, pred_labels)
+    val_model_recall = recall_score(true_labels, pred_labels)
+    val_model_f1 = f1_score(true_labels, pred_labels)
+
+    true_labels, pred_labels = predict(bert_classifier, test_loader, use_drug_embeddings)
+    test_model_precision = precision_score(true_labels, pred_labels)
+    test_model_recall = recall_score(true_labels, pred_labels)
+    test_model_f1 = f1_score(true_labels, pred_labels)
+
+    with codecs.open(output_evaluation_path, 'a+', encoding="utf-8") as output_file:
+        output_file.write(f"{model_chkpnt_name},{best_epoch},{val_model_precision},{val_model_recall},{val_model_f1}\n")
+        output_file.write(
+            f"{model_chkpnt_name},{best_epoch},{test_model_precision},{test_model_recall},{test_model_f1}\n")
+
+    del bert_classifier
+    del enrudr_model
+    del optimizer
+    del criterion
 
 
 def predict(model, data_loader, use_drug_embeddings):
@@ -292,39 +338,6 @@ class BertClassifierWithDrugEmbeddings(nn.Module):
 
 def clear():
     os.system('cls')
-
-
-def train_evaluate_model(seed, bert_classifier, use_drug_embeddings, learning_rate, train_loader, dev_loader,
-                         test_loader, num_epochs, output_evaluation_path, output_model_dir, model_chkpnt_name):
-    torch.manual_seed(seed)
-    enrudr_model = AutoModel.from_pretrained("cimm-kzn/enrudr-bert")
-    optimizer = optim.Adam(bert_classifier.parameters(), lr=learning_rate)
-    criterion = nn.BCEWithLogitsLoss()
-
-    output_ckpt_path = os.path.join(output_model_dir, f"best-val-{model_chkpnt_name}.pt")
-    best_epoch = train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criterion, num_epochs, use_drug_embeddings,
-                   output_ckpt_path)
-
-    bert_classifier.load_state_dict(torch.load(output_ckpt_path))
-
-    true_labels, pred_labels = predict(bert_classifier, dev_loader, use_drug_embeddings)
-    val_model_precision = precision_score(true_labels, pred_labels)
-    val_model_recall = recall_score(true_labels, pred_labels)
-    val_model_f1 = f1_score(true_labels, pred_labels)
-
-    true_labels, pred_labels = predict(bert_classifier, test_loader, use_drug_embeddings)
-    test_model_precision = precision_score(true_labels, pred_labels)
-    test_model_recall = recall_score(true_labels, pred_labels)
-    test_model_f1 = f1_score(true_labels, pred_labels)
-
-    with codecs.open(output_evaluation_path, 'a+', encoding="utf-8") as output_file:
-        output_file.write(f"{model_chkpnt_name},{best_epoch},{val_model_precision},{val_model_recall},{val_model_f1}\n")
-        output_file.write(f"{model_chkpnt_name},{best_epoch},{test_model_precision},{test_model_recall},{test_model_f1}\n")
-
-    del bert_classifier
-    del enrudr_model
-    del optimizer
-    del criterion
 
 
 def embedding_str_to_numpy(s):
