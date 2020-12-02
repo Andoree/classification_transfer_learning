@@ -134,7 +134,7 @@ def epoch_time(start_time, end_time):
 
 
 def train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criterion, n_epochs, use_drug_embeddings,
-                   checkpoint_fname):
+                   save_checkpoint_path):
     train_history = []
     valid_history = []
     valid_history_f1 = []
@@ -174,7 +174,7 @@ def train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criteri
 
         if valid_f1_score > best_f1_score:
             best_f1_score = valid_f1_score
-            torch.save(bert_classifier.state_dict(), f'best-val-{checkpoint_fname}.pt')
+            torch.save(bert_classifier.state_dict(), save_checkpoint_path)
 
         print(f'Epoch: {epoch+1:02} | Time: {epoch_mins}m {epoch_secs}s')
         print(f'\tTrain Loss: {train_loss:.3f}')
@@ -265,10 +265,10 @@ def train_evaluate_model(seed, bert_classifier, use_drug_embeddings, learning_ra
     optimizer = optim.Adam(bert_classifier.parameters(), lr=learning_rate)
     criterion = nn.BCEWithLogitsLoss()
 
-    train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criterion, num_epochs, use_drug_embeddings,
-                   model_chkpnt_name)
-
     output_ckpt_path = os.path.join(output_model_dir, f"best-val-{model_chkpnt_name}.pt")
+    train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criterion, num_epochs, use_drug_embeddings,
+                   output_ckpt_path)
+
     bert_classifier.load_state_dict(torch.load(output_ckpt_path))
 
     true_labels, pred_labels = predict(bert_classifier, dev_loader, use_drug_embeddings)
