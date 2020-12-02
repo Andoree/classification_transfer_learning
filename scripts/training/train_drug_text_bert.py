@@ -213,9 +213,9 @@ def train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criteri
         print(f'\t Val. Loss: {valid_loss:.3f} |  Val. F1: {valid_f1_score:.3f}')
 
         with codecs.open(train_statistics_path, 'a+', encoding="utf-8") as output_path:
-            output_path.write(f'Epoch: {epoch+1:02} | Time: {epoch_mins}m {epoch_secs}s')
-            output_path.write(f'\tTrain Loss: {train_loss:.3f}')
-            output_path.write(f'\t Val. Loss: {valid_loss:.3f} |  Val. F1: {valid_f1_score:.3f}')
+            output_path.write(f'Epoch: {epoch+1:02} | Time: {epoch_mins}m {epoch_secs}s\n')
+            output_path.write(f'\tTrain Loss: {train_loss:.3f}\n')
+            output_path.write(f'\t Val. Loss: {valid_loss:.3f} |  Val. F1: {valid_f1_score:.3f}\n')
 
     return best_epoch
 
