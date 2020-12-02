@@ -1,10 +1,8 @@
 import codecs
 import configparser
 import os
-# Commented out IPython magic to ensure Python compatibility.
-import time
 
-import matplotlib
+import time
 import numpy as np
 import pandas as pd
 import torch
@@ -12,11 +10,9 @@ import torch.optim as optim
 from sklearn.metrics import precision_score, f1_score, recall_score
 from torch import nn
 from torch.utils.data import Dataset
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 from transformers import AutoModel
 from transformers import AutoTokenizer, RobertaModel
-
-matplotlib.rcParams.update({'figure.figsize': (16, 12), 'font.size': 14})
 
 device = "cuda" if torch.cuda.is_available else "cpu"
 
@@ -295,6 +291,15 @@ def train_evaluate_model(seed, bert_classifier, use_drug_embeddings, learning_ra
     del criterion
 
 
+def embedding_str_to_numpy(s):
+    numbers_strs = s.strip("[]").split()
+    emb_size = len(numbers_strs)
+    embedding = np.empty(shape=emb_size, dtype=np.float)
+    for i in range(emb_size):
+        embedding[i] = np.float(numbers_strs[i])
+    return embedding
+
+
 def main():
     config = configparser.ConfigParser()
     config.read("train_config.ini")
@@ -320,31 +325,40 @@ def main():
     torch.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
 
-    train_path = os.path.join(data_dir, "train.tsv")
-    test_path = os.path.join(data_dir, "test.tsv")
-    dev_path = os.path.join(data_dir, "dev.tsv")
-    bilingual_train_path = os.path.join(bilingual_data_dir, "train.tsv")
+    train_path = os.path.join(data_dir, "train.csv")
+    test_path = os.path.join(data_dir, "test.csv")
+    dev_path = os.path.join(data_dir, "dev.csv")
+    bilingual_train_path = os.path.join(bilingual_data_dir, "bilingual_train.csv")
 
-    train_df = pd.read_csv(train_path, sep='\t')
-    dev_df = pd.read_csv(dev_path, sep='\t')
-    test_df = pd.read_csv(test_path, sep='\t')
-    bilingual_train_df = pd.read_csv(bilingual_train_path, sep='\t')
+    train_df = pd.read_csv(train_path, )
+    train_df["drug_embedding"] = train_df["drug_embedding"].apply(lambda x: embedding_str_to_numpy(x))
+    dev_df = pd.read_csv(dev_path, )
+    dev_df["drug_embedding"] = dev_df["drug_embedding"].apply(lambda x: embedding_str_to_numpy(x))
+    test_df = pd.read_csv(test_path, )
+    test_df["drug_embedding"] = test_df["drug_embedding"].apply(lambda x: embedding_str_to_numpy(x))
+    bilingual_train_df = pd.read_csv(bilingual_train_path,)
+    bilingual_train_df["drug_embedding"] = bilingual_train_df["drug_embedding"].apply(lambda x: embedding_str_to_numpy(x))
 
-    chemberta_model = RobertaModel.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/").to(device)
-    tokenizer = AutoTokenizer.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/")
+    bilingual_train_df["drug_embedding"] = bilingual_train_df["drug_embedding"].apply(lambda x: torch.FloatTensor(x))
+    train_df["drug_embedding"] = train_df["drug_embedding"].apply(lambda x: torch.FloatTensor(x))
+    test_df["drug_embedding"] = test_df["drug_embedding"].apply(lambda x: torch.FloatTensor(x))
+    dev_df["drug_embedding"] = dev_df["drug_embedding"].apply(lambda x: torch.FloatTensor(x))
 
-    bilingual_train_df["drug_embedding"] = encode_smiles(chemberta_model, tokenizer, max_chemberta_length,
-                                                         bilingual_train_df.smiles.values)
-    train_df["drug_embedding"] = encode_smiles(chemberta_model, tokenizer, max_chemberta_length, train_df.smiles.values)
-    dev_df["drug_embedding"] = encode_smiles(chemberta_model, tokenizer, max_chemberta_length, dev_df.smiles.values)
-    test_df["drug_embedding"] = encode_smiles(chemberta_model, tokenizer, max_chemberta_length, test_df.smiles.values)
+    # chemberta_model = RobertaModel.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/").to(device)
+    # tokenizer = AutoTokenizer.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/")
 
-    chemberta_model = chemberta_model.cpu()
-    del chemberta_model
+    # bilingual_train_df["drug_embedding"] = encode_smiles(chemberta_model, tokenizer, max_chemberta_length,
+    #                                                      bilingual_train_df.smiles.values)
+    # train_df["drug_embedding"] = encode_smiles(chemberta_model, tokenizer, max_chemberta_length, train_df.smiles.values)
+    # dev_df["drug_embedding"] = encode_smiles(chemberta_model, tokenizer, max_chemberta_length, dev_df.smiles.values)
+    # test_df["drug_embedding"] = encode_smiles(chemberta_model, tokenizer, max_chemberta_length, test_df.smiles.values)
+    #
+    # chemberta_model = chemberta_model.cpu()
+    # del chemberta_model
 
     text_tokenizer = AutoTokenizer.from_pretrained("cimm-kzn/enrudr-bert", cache_dir="models/")
 
-    train_tweets_dataset = TweetsDataset(train_df, text_tokenizer, max_length=max_length)
+    train_tweets_dataset = TweetsDataset(train_df, text_tokenizer, max_length=max_length, )
     dev_tweets_dataset = TweetsDataset(dev_df, text_tokenizer, max_length=max_length)
     test_tweets_dataset = TweetsDataset(test_df, text_tokenizer, max_length=max_length)
     bilingual_train_tweets_dataset = TweetsDataset(bilingual_train_df, text_tokenizer, max_length=max_length)
@@ -373,7 +387,7 @@ def main():
 
     torch.manual_seed(seed)
     enrudr_model = AutoModel.from_pretrained("cimm-kzn/enrudr-bert", cache_dir="models/")
-    drug_enc_hid_dim = chemberta_model.config.hidden_size
+    drug_enc_hid_dim = 768
     use_drug_embeddings = True
     bert_clf_with_drug_embeddings = BertClassifierWithDrugEmbeddings(enrudr_model,
                                                                      drug_enc_hid_dim=drug_enc_hid_dim, ).to(device)
