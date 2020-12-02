@@ -317,10 +317,6 @@ def main():
         os.makedirs(output_dir)
     output_evaluation_filename = config["OUTPUT"]["EVALUATION_FILENAME"]
     output_evaluation_path = os.path.join(output_dir, output_evaluation_filename)
-    output_dir = os.path.dirname(output_evaluation_path)
-
-    if not os.path.exists(output_dir) and output_dir != '':
-        os.makedirs(output_dir)
 
     torch.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
