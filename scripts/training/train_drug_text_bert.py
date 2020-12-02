@@ -287,14 +287,14 @@ class BertSimpleClassifier(nn.Module):
         super().__init__()
 
         self.bert_text_encoder = bert_text_encoder
-        self.dropout = nn.Dropout(dropout)
+        # self.dropout = nn.Dropout(dropout)
         bert_hidden_dim = bert_text_encoder.config.hidden_size
 
         self.classifier = nn.Sequential(
             nn.Linear(bert_hidden_dim, 100),
-            # nn.Tanh(),
-            # nn.BatchNorm1d(100),
-            # nn.Dropout(),
+            nn.Tanh(),
+            nn.BatchNorm1d(100),
+            nn.Dropout(dropout),
             nn.Linear(100, 1),
         )
 
@@ -302,7 +302,7 @@ class BertSimpleClassifier(nn.Module):
         last_hidden_states = self.bert_text_encoder(inputs, attention_mask=attention_mask,
                                                     return_dict=True)['last_hidden_state']
         text_cls_embeddings = torch.stack([elem[0, :] for elem in last_hidden_states])
-        text_cls_embeddings = self.dropout(text_cls_embeddings)
+        # text_cls_embeddings = self.dropout(text_cls_embeddings)
 
         proba = self.classifier(text_cls_embeddings)
         return proba
@@ -313,14 +313,14 @@ class BertClassifierWithDrugEmbeddings(nn.Module):
         super().__init__()
 
         self.bert_text_encoder = bert_text_encoder
-        self.dropout = nn.Dropout(dropout)
+        # self.dropout = nn.Dropout(dropout)
         bert_hidden_dim = bert_text_encoder.config.hidden_size
 
         self.classifier = nn.Sequential(
             nn.Linear(bert_hidden_dim + drug_enc_hid_dim, 100),
-            # nn.Tanh(),
-            # nn.BatchNorm1d(100),
-            # nn.Dropout(),
+            nn.Tanh(),
+            nn.BatchNorm1d(100),
+            nn.Dropout(dropout),
             nn.Linear(100, 1),
         )
 
@@ -330,7 +330,7 @@ class BertClassifierWithDrugEmbeddings(nn.Module):
         text_cls_embeddings = torch.stack([elem[0, :] for elem in last_hidden_states])
 
         concat_text_drug_embeddings = torch.cat([text_cls_embeddings, drug_embeddings], dim=1)
-        concat_text_drug_embeddings = self.dropout(concat_text_drug_embeddings)
+        # concat_text_drug_embeddings = self.dropout(concat_text_drug_embeddings)
 
         proba = self.classifier(concat_text_drug_embeddings)
         return proba
