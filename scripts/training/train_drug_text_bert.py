@@ -62,8 +62,6 @@ def create_dataset_weights(dataset):
     return sample_weights
 
 
-
-
 def train(model, iterator, optimizer, criterion, train_history=None, valid_history=None, use_drug_embeddings=True):
     model.train()
 
@@ -236,15 +234,18 @@ def predict(model, data_loader, use_drug_embeddings):
 
 
 class BertSimpleClassifier(nn.Module):
-    def __init__(self, bert_text_encoder, ):
+    def __init__(self, bert_text_encoder, dropout):
         super().__init__()
 
         self.bert_text_encoder = bert_text_encoder
-
+        self.dropout = nn.Dropout(dropout)
         bert_hidden_dim = bert_text_encoder.config.hidden_size
 
         self.classifier = nn.Sequential(
             nn.Linear(bert_hidden_dim, 100),
+            nn.ReLU(),
+            nn.BatchNorm1d(100),
+            nn.Dropout(),
             nn.Linear(100, 1),
         )
 
@@ -252,21 +253,25 @@ class BertSimpleClassifier(nn.Module):
         last_hidden_states = self.bert_text_encoder(inputs, attention_mask=attention_mask,
                                                     return_dict=True)['last_hidden_state']
         text_cls_embeddings = torch.stack([elem[0, :] for elem in last_hidden_states])
+        text_cls_embeddings = self.dropout(text_cls_embeddings)
 
         proba = self.classifier(text_cls_embeddings)
         return proba
 
 
 class BertClassifierWithDrugEmbeddings(nn.Module):
-    def __init__(self, bert_text_encoder, drug_enc_hid_dim, ):
+    def __init__(self, bert_text_encoder, drug_enc_hid_dim, dropout):
         super().__init__()
 
         self.bert_text_encoder = bert_text_encoder
-
+        self.dropout = nn.Dropout(dropout)
         bert_hidden_dim = bert_text_encoder.config.hidden_size
 
         self.classifier = nn.Sequential(
             nn.Linear(bert_hidden_dim + drug_enc_hid_dim, 100),
+            nn.ReLU(),
+            nn.BatchNorm1d(100),
+            nn.Dropout(),
             nn.Linear(100, 1),
         )
 
@@ -276,6 +281,7 @@ class BertClassifierWithDrugEmbeddings(nn.Module):
         text_cls_embeddings = torch.stack([elem[0, :] for elem in last_hidden_states])
 
         concat_text_drug_embeddings = torch.cat([text_cls_embeddings, drug_embeddings], dim=1)
+        concat_text_drug_embeddings = self.dropout(concat_text_drug_embeddings)
 
         proba = self.classifier(concat_text_drug_embeddings)
         return proba
@@ -354,7 +360,6 @@ def main():
     torch.cuda.random.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
 
-
     train_path = os.path.join(data_dir, "train.csv")
     test_path = os.path.join(data_dir, "test.csv")
     dev_path = os.path.join(data_dir, "dev.csv")
@@ -409,10 +414,11 @@ def main():
         bilingual_train_tweets_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=True, drop_last=True,
     )
 
+    DROPOUT = 0.2
     torch.manual_seed(seed)
     enrudr_model = AutoModel.from_pretrained("cimm-kzn/enrudr-bert", cache_dir="models/")
     use_drug_embeddings = False
-    bert_simple_clf = BertSimpleClassifier(enrudr_model, ).to(device)
+    bert_simple_clf = BertSimpleClassifier(enrudr_model, dropout=DROPOUT).to(device)
     train_evaluate_model(seed, bert_simple_clf, use_drug_embeddings, learning_rate, train_loader, dev_loader,
                          test_loader, num_epochs, output_evaluation_path, output_dir, "ru-simple")
 
@@ -421,7 +427,8 @@ def main():
     drug_enc_hid_dim = 768
     use_drug_embeddings = True
     bert_clf_with_drug_embeddings = BertClassifierWithDrugEmbeddings(enrudr_model,
-                                                                     drug_enc_hid_dim=drug_enc_hid_dim, ).to(device)
+                                                                     drug_enc_hid_dim=drug_enc_hid_dim,
+                                                                     dropout=DROPOUT).to(device)
     train_evaluate_model(seed, bert_clf_with_drug_embeddings, use_drug_embeddings, learning_rate, train_loader,
                          dev_loader,
                          test_loader, num_epochs, output_evaluation_path, output_dir, "ru-with-drugs")
@@ -429,7 +436,7 @@ def main():
     torch.manual_seed(seed)
     enrudr_model = AutoModel.from_pretrained("cimm-kzn/enrudr-bert", cache_dir="models/")
     use_drug_embeddings = False
-    bert_simple_clf = BertSimpleClassifier(enrudr_model, ).to(device)
+    bert_simple_clf = BertSimpleClassifier(enrudr_model, dropout=DROPOUT).to(device)
     train_evaluate_model(seed, bert_simple_clf, use_drug_embeddings, learning_rate, bilingual_train_loader, dev_loader,
                          test_loader, num_epochs, output_evaluation_path, output_dir, "ruen-simple")
 
@@ -438,7 +445,8 @@ def main():
     drug_enc_hid_dim = enrudr_model.config.hidden_size
     use_drug_embeddings = True
     bert_clf_with_drug_embeddings = BertClassifierWithDrugEmbeddings(enrudr_model,
-                                                                     drug_enc_hid_dim=drug_enc_hid_dim, ).to(device)
+                                                                     drug_enc_hid_dim=drug_enc_hid_dim,
+                                                                     dropout=DROPOUT).to(device)
     train_evaluate_model(seed, bert_clf_with_drug_embeddings, use_drug_embeddings, learning_rate,
                          bilingual_train_loader,
                          dev_loader,
