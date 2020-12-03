@@ -206,8 +206,6 @@ def train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criteri
             best_epoch = epoch
             torch.save(bert_classifier.state_dict(), save_checkpoint_path)
 
-
-
         print(f'Epoch: {epoch+1:02} | Time: {epoch_mins}m {epoch_secs}s')
         print(f'\tTrain Loss: {train_loss:.3f}')
         print(f'\t Val. Loss: {valid_loss:.3f} |  Val. F1: {valid_f1_score:.3f}')
@@ -361,6 +359,7 @@ def main():
     batch_size = config.getint("PARAMETERS", "BATCH_SIZE")
     learning_rate = config.getfloat("PARAMETERS", "LEARNING_RATE")
     num_epochs = config.getint("PARAMETERS", "NUM_EPOCHS")
+    apply_upsampling = config.getboolean("PARAMETERS", "APPLY_UPSAMPLING")
     output_dir = config["OUTPUT"]["OUTPUT_DIR"]
     if not os.path.exists(output_dir) and output_dir != '':
         os.makedirs(output_dir)
@@ -415,10 +414,27 @@ def main():
     test_tweets_dataset = TweetsDataset(test_df, text_tokenizer, max_length=max_length)
     bilingual_train_tweets_dataset = TweetsDataset(bilingual_train_df, text_tokenizer, max_length=max_length)
 
+    russian_train_weights = create_dataset_weights(train_tweets_dataset)
+    russian_train_weights = torch.DoubleTensor(russian_train_weights)
+    bilingual_train_weights = create_dataset_weights(bilingual_train_tweets_dataset)
+    bilingual_train_weights = torch.DoubleTensor(bilingual_train_weights)
+
+    if apply_upsampling:
+        russian_sampler = torch.utils.data.sampler.WeightedRandomSampler(russian_train_weights,
+                                                                         len(russian_train_weights))
+        bilingual_sampler = torch.utils.data.sampler.WeightedRandomSampler(bilingual_train_weights,
+                                                                           len(bilingual_train_weights))
+        shuffle = False
+    else:
+        russian_sampler = None
+        bilingual_sampler = None
+        shuffle = True
+
     num_workers = 4
 
     train_loader = torch.utils.data.DataLoader(
-        train_tweets_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=True, drop_last=True,
+        train_tweets_dataset, batch_size=batch_size, num_workers=num_workers, sampler=russian_sampler, shuffle=shuffle,
+        drop_last=True,
     )
     dev_loader = torch.utils.data.DataLoader(
         dev_tweets_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
@@ -427,7 +443,8 @@ def main():
         test_tweets_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
     )
     bilingual_train_loader = torch.utils.data.DataLoader(
-        bilingual_train_tweets_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=True, drop_last=True,
+        bilingual_train_tweets_dataset, batch_size=batch_size, num_workers=num_workers, sampler=bilingual_sampler,
+        shuffle=shuffle, drop_last=True,
     )
 
     DROPOUT = 0.2
