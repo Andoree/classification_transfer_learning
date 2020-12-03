@@ -367,12 +367,12 @@ def main():
     output_evaluation_path = os.path.join(output_dir, output_evaluation_filename)
 
     torch.manual_seed(seed)
-    torch.random.manual_seed(seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.cuda.random.manual_seed(seed)
-    torch.cuda.random.manual_seed_all(seed)
+    # torch.random.manual_seed(seed)
+    # os.environ['PYTHONHASHSEED'] = str(seed)
+    # random.seed(seed)
+    # np.random.seed(seed)
+    # torch.cuda.random.manual_seed(seed)
+    # torch.cuda.random.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
 
     train_path = os.path.join(data_dir, "train.csv")
@@ -454,6 +454,8 @@ def main():
     bert_simple_clf = BertSimpleClassifier(enrudr_model, dropout=DROPOUT).to(device)
     train_evaluate_model(seed, bert_simple_clf, use_drug_embeddings, learning_rate, train_loader, dev_loader,
                          test_loader, num_epochs, output_evaluation_path, output_dir, "ru-simple")
+    del bert_simple_clf
+    del enrudr_model
 
     torch.manual_seed(seed)
     enrudr_model = AutoModel.from_pretrained("cimm-kzn/enrudr-bert", cache_dir="models/")
@@ -465,6 +467,8 @@ def main():
     train_evaluate_model(seed, bert_clf_with_drug_embeddings, use_drug_embeddings, learning_rate, train_loader,
                          dev_loader,
                          test_loader, num_epochs, output_evaluation_path, output_dir, "ru-with-drugs")
+    del bert_clf_with_drug_embeddings
+    del enrudr_model
 
     torch.manual_seed(seed)
     enrudr_model = AutoModel.from_pretrained("cimm-kzn/enrudr-bert", cache_dir="models/")
@@ -472,6 +476,8 @@ def main():
     bert_simple_clf = BertSimpleClassifier(enrudr_model, dropout=DROPOUT).to(device)
     train_evaluate_model(seed, bert_simple_clf, use_drug_embeddings, learning_rate, bilingual_train_loader, dev_loader,
                          test_loader, num_epochs, output_evaluation_path, output_dir, "ruen-simple")
+    del bert_simple_clf
+    del enrudr_model
 
     torch.manual_seed(seed)
     enrudr_model = AutoModel.from_pretrained("cimm-kzn/enrudr-bert", cache_dir="models/")
@@ -480,10 +486,13 @@ def main():
     bert_clf_with_drug_embeddings = BertClassifierWithDrugEmbeddings(enrudr_model,
                                                                      drug_enc_hid_dim=drug_enc_hid_dim,
                                                                      dropout=DROPOUT).to(device)
+
     train_evaluate_model(seed, bert_clf_with_drug_embeddings, use_drug_embeddings, learning_rate,
                          bilingual_train_loader,
                          dev_loader,
                          test_loader, num_epochs, output_evaluation_path, output_dir, "ruen-drug")
+    del bert_clf_with_drug_embeddings
+    del enrudr_model
 
 
 if __name__ == '__main__':
