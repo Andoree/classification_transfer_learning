@@ -292,9 +292,9 @@ class BertSimpleClassifier(nn.Module):
 
         self.classifier = nn.Sequential(
             nn.Linear(bert_hidden_dim, 100),
-            nn.Tanh(),
-            nn.BatchNorm1d(100),
-            nn.Dropout(dropout),
+            # nn.Tanh(),
+            # nn.BatchNorm1d(100),
+            # nn.Dropout(dropout),
             nn.Linear(100, 1),
         )
 
@@ -318,9 +318,9 @@ class BertClassifierWithDrugEmbeddings(nn.Module):
 
         self.classifier = nn.Sequential(
             nn.Linear(bert_hidden_dim + drug_enc_hid_dim, 100),
-            nn.Tanh(),
-            nn.BatchNorm1d(100),
-            nn.Dropout(dropout),
+            # nn.Tanh(),
+            # nn.BatchNorm1d(100),
+            # nn.Dropout(dropout),
             nn.Linear(100, 1),
         )
 
