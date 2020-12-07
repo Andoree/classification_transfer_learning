@@ -287,9 +287,9 @@ class BertSimpleClassifier(nn.Module):
         bert_hidden_dim = bert_text_encoder.config.hidden_size
 
         self.classifier = nn.Sequential(
+            nn.Tanh(),
             nn.Linear(bert_hidden_dim, 100),
             nn.ReLU(),
-            nn.BatchNorm1d(100),
             nn.Dropout(dropout),
             # nn.Tanh(),
             # nn.BatchNorm1d(100),
@@ -316,9 +316,9 @@ class BertClassifierWithDrugEmbeddings(nn.Module):
         bert_hidden_dim = bert_text_encoder.config.hidden_size
 
         self.classifier = nn.Sequential(
+            nn.Tanh(),
             nn.Linear(bert_hidden_dim + drug_enc_hid_dim, 100),
             nn.ReLU(),
-            nn.BatchNorm1d(100),
             nn.Dropout(dropout),
             # nn.Tanh(),
             # nn.BatchNorm1d(100),
