@@ -12,7 +12,7 @@ from sklearn.metrics import precision_score, f1_score, recall_score
 from torch import nn
 from torch.utils.data import Dataset
 from tqdm import tqdm
-from transformers import AutoModel
+from transformers import AutoModel, RobertaModel
 from transformers import AutoTokenizer
 
 device = "cuda" if torch.cuda.is_available else "cpu"
@@ -187,20 +187,6 @@ def train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criteri
         valid_history.append(valid_loss)
         valid_history_f1.append(valid_f1_score)
 
-        # fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(12, 8))
-        #
-        # clear()
-        # ax[0].plot(valid_history_f1, label='Val f1-score')
-        # ax[0].set_xlabel('Epoch')
-        # ax[0].set_title('Val f1-score')
-        #
-        # ax[1].plot(train_history, label='general train history')
-        # ax[1].set_xlabel('Epoch')
-        # ax[1].plot(valid_history, label='general valid history')
-        #
-        # plt.legend()
-        # plt.show()
-
         if valid_f1_score > best_f1_score:
             best_f1_score = valid_f1_score
             best_epoch = epoch
@@ -221,7 +207,6 @@ def train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criteri
 def train_evaluate_model(seed, bert_classifier, use_drug_embeddings, learning_rate, train_loader, dev_loader,
                          test_loader, num_epochs, output_evaluation_path, output_model_dir, model_chkpnt_name):
     torch.manual_seed(seed)
-    enrudr_model = AutoModel.from_pretrained("cimm-kzn/enrudr-bert")
     optimizer = optim.Adam(bert_classifier.parameters(), lr=learning_rate)
     criterion = nn.BCEWithLogitsLoss()
 
@@ -285,23 +270,26 @@ class BertSimpleClassifier(nn.Module):
         self.bert_text_encoder = bert_text_encoder
         # self.dropout = nn.Dropout(dropout)
         bert_hidden_dim = bert_text_encoder.config.hidden_size
-
+        self.emb_dropout = nn.Dropout(p=dropout)
         self.classifier = nn.Sequential(
-            nn.Tanh(),
-            nn.Linear(bert_hidden_dim, 100),
-            nn.ReLU(),
-            nn.Dropout(dropout),
+            # nn.Tanh(),
+            nn.GELU(),
+            nn.Linear(bert_hidden_dim, bert_hidden_dim),
+            nn.Dropout(p=dropout),
+            nn.GELU(),
+            # nn.ReLU(),
+            # nn.Dropout(dropout),
             # nn.Tanh(),
             # nn.BatchNorm1d(100),
             # nn.Dropout(dropout),
-            nn.Linear(100, 1),
+            nn.Linear(bert_hidden_dim, 1),
         )
 
     def forward(self, inputs, attention_mask, ):
         last_hidden_states = self.bert_text_encoder(inputs, attention_mask=attention_mask,
                                                     return_dict=True)['last_hidden_state']
         text_cls_embeddings = torch.stack([elem[0, :] for elem in last_hidden_states])
-        # text_cls_embeddings = self.dropout(text_cls_embeddings)
+        text_cls_embeddings = self.emb_dropout(text_cls_embeddings)
 
         proba = self.classifier(text_cls_embeddings)
         return proba
@@ -314,23 +302,26 @@ class BertClassifierWithDrugEmbeddings(nn.Module):
         self.bert_text_encoder = bert_text_encoder
         # self.dropout = nn.Dropout(dropout)
         bert_hidden_dim = bert_text_encoder.config.hidden_size
-
+        self.emb_dropout = nn.Dropout(p=dropout)
         self.classifier = nn.Sequential(
-            nn.Tanh(),
-            nn.Linear(bert_hidden_dim + drug_enc_hid_dim, 100),
-            nn.ReLU(),
-            nn.Dropout(dropout),
+            # nn.Tanh(),
+            nn.GELU(),
+            nn.Linear(bert_hidden_dim + drug_enc_hid_dim, bert_hidden_dim),
+            nn.Dropout(p=dropout),
+            nn.GELU(),
+            # nn.ReLU(),
+            # nn.Dropout(dropout),
             # nn.Tanh(),
             # nn.BatchNorm1d(100),
             # nn.Dropout(dropout),
-            nn.Linear(100, 1),
+            nn.Linear(bert_hidden_dim, 1),
         )
 
     def forward(self, inputs, attention_mask, drug_embeddings):
         last_hidden_states = self.bert_text_encoder(inputs, attention_mask=attention_mask,
                                                     return_dict=True)['last_hidden_state']
         text_cls_embeddings = torch.stack([elem[0, :] for elem in last_hidden_states])
-
+        text_cls_embeddings = self.emb_dropout(text_cls_embeddings)
         concat_text_drug_embeddings = torch.cat([text_cls_embeddings, drug_embeddings], dim=1)
         # concat_text_drug_embeddings = self.dropout(concat_text_drug_embeddings)
 
@@ -357,11 +348,13 @@ def main():
 
     data_dir = config["INPUT"]["INPUT_DIR"]
     bilingual_data_dir = config["INPUT"]["BILINGUAL_INPUT_DIR"]
+    drug_embeddings_from = config["INPUT"]["DRUG_EMBEDDINGS_FROM"]
     seed = config.getint("PARAMETERS", "SEED")
     max_length = config.getint("PARAMETERS", "MAX_TEXT_LENGTH")
     max_chemberta_length = config.getint("PARAMETERS", "MAX_MOLECULE_LENGTH")
     batch_size = config.getint("PARAMETERS", "BATCH_SIZE")
     learning_rate = config.getfloat("PARAMETERS", "LEARNING_RATE")
+    dropout_p = config.getfloat("PARAMETERS", "DROPOUT")
     num_epochs = config.getint("PARAMETERS", "NUM_EPOCHS")
     apply_upsampling = config.getboolean("PARAMETERS", "APPLY_UPSAMPLING")
     model_type = config["PARAMETERS"]["MODEL_TYPE"]
@@ -385,32 +378,41 @@ def main():
     dev_path = os.path.join(data_dir, "dev.csv")
     bilingual_train_path = os.path.join(bilingual_data_dir, "bilingual_train.csv")
 
-    train_df = pd.read_csv(train_path, )
-    train_df["drug_embedding"] = train_df["drug_embedding"].apply(lambda x: embedding_str_to_numpy(x))
-    dev_df = pd.read_csv(dev_path, )
-    dev_df["drug_embedding"] = dev_df["drug_embedding"].apply(lambda x: embedding_str_to_numpy(x))
-    test_df = pd.read_csv(test_path, )
-    test_df["drug_embedding"] = test_df["drug_embedding"].apply(lambda x: embedding_str_to_numpy(x))
-    bilingual_train_df = pd.read_csv(bilingual_train_path, )
-    bilingual_train_df["drug_embedding"] = bilingual_train_df["drug_embedding"].apply(
-        lambda x: embedding_str_to_numpy(x))
+    if drug_embeddings_from == "file":
+        train_df = pd.read_csv(train_path, )
+        dev_df = pd.read_csv(dev_path, )
+        test_df = pd.read_csv(test_path, )
+        bilingual_train_df = pd.read_csv(bilingual_train_path, )
+        train_df["drug_embedding"] = train_df["drug_embedding"].apply(lambda x: embedding_str_to_numpy(x))
+        dev_df["drug_embedding"] = dev_df["drug_embedding"].apply(lambda x: embedding_str_to_numpy(x))
+        test_df["drug_embedding"] = test_df["drug_embedding"].apply(lambda x: embedding_str_to_numpy(x))
+        bilingual_train_df["drug_embedding"] = bilingual_train_df["drug_embedding"].apply(
+            lambda x: embedding_str_to_numpy(x))
 
-    bilingual_train_df["drug_embedding"] = bilingual_train_df["drug_embedding"].apply(lambda x: torch.FloatTensor(x))
-    train_df["drug_embedding"] = train_df["drug_embedding"].apply(lambda x: torch.FloatTensor(x))
-    test_df["drug_embedding"] = test_df["drug_embedding"].apply(lambda x: torch.FloatTensor(x))
-    dev_df["drug_embedding"] = dev_df["drug_embedding"].apply(lambda x: torch.FloatTensor(x))
-
-    # chemberta_model = RobertaModel.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/").to(device)
-    # tokenizer = AutoTokenizer.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/")
-
-    # bilingual_train_df["drug_embedding"] = encode_smiles(chemberta_model, tokenizer, max_chemberta_length,
-    #                                                      bilingual_train_df.smiles.values)
-    # train_df["drug_embedding"] = encode_smiles(chemberta_model, tokenizer, max_chemberta_length, train_df.smiles.values)
-    # dev_df["drug_embedding"] = encode_smiles(chemberta_model, tokenizer, max_chemberta_length, dev_df.smiles.values)
-    # test_df["drug_embedding"] = encode_smiles(chemberta_model, tokenizer, max_chemberta_length, test_df.smiles.values)
-    #
-    # chemberta_model = chemberta_model.cpu()
-    # del chemberta_model
+        bilingual_train_df["drug_embedding"] = bilingual_train_df["drug_embedding"].apply(
+            lambda x: torch.FloatTensor(x))
+        train_df["drug_embedding"] = train_df["drug_embedding"].apply(lambda x: torch.FloatTensor(x))
+        test_df["drug_embedding"] = test_df["drug_embedding"].apply(lambda x: torch.FloatTensor(x))
+        dev_df["drug_embedding"] = dev_df["drug_embedding"].apply(lambda x: torch.FloatTensor(x))
+    elif drug_embeddings_from == "chemberta":
+        train_df = pd.read_csv(train_path, sep='\t')
+        dev_df = pd.read_csv(dev_path, sep='\t')
+        test_df = pd.read_csv(test_path, sep='\t')
+        bilingual_train_df = pd.read_csv(bilingual_train_path, sep='\t')
+        chemberta_model = RobertaModel.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/").to(
+            device)
+        tokenizer = AutoTokenizer.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/")
+        bilingual_train_df["drug_embedding"] = encode_smiles(chemberta_model, tokenizer, max_chemberta_length,
+                                                             bilingual_train_df.smiles.values)
+        train_df["drug_embedding"] = encode_smiles(chemberta_model, tokenizer, max_chemberta_length,
+                                                   train_df.smiles.values)
+        dev_df["drug_embedding"] = encode_smiles(chemberta_model, tokenizer, max_chemberta_length, dev_df.smiles.values)
+        test_df["drug_embedding"] = encode_smiles(chemberta_model, tokenizer, max_chemberta_length,
+                                                  test_df.smiles.values)
+        chemberta_model = chemberta_model.cpu()
+        del chemberta_model
+    else:
+        raise ValueError(f"Invalid drug embeddings source: {drug_embeddings_from}")
 
     text_tokenizer = AutoTokenizer.from_pretrained("cimm-kzn/enrudr-bert", cache_dir="models/")
 
@@ -451,11 +453,12 @@ def main():
         bilingual_train_tweets_dataset, batch_size=batch_size, num_workers=num_workers, sampler=bilingual_sampler,
         shuffle=shuffle, drop_last=True,
     )
-    DROPOUT = 0.2
+    # dropout_p = 0.2
     if model_type == "ru_nodrug":
+        torch.manual_seed(seed)
         enrudr_model = AutoModel.from_pretrained("cimm-kzn/enrudr-bert", cache_dir="models/")
         use_drug_embeddings = False
-        bert_simple_clf = BertSimpleClassifier(enrudr_model, dropout=DROPOUT).to(device)
+        bert_simple_clf = BertSimpleClassifier(enrudr_model, dropout=dropout_p).to(device)
         train_evaluate_model(seed, bert_simple_clf, use_drug_embeddings, learning_rate, train_loader, dev_loader,
                              test_loader, num_epochs, output_evaluation_path, output_dir, "ru-simple")
         del bert_simple_clf
@@ -467,19 +470,19 @@ def main():
         use_drug_embeddings = True
         bert_clf_with_drug_embeddings = BertClassifierWithDrugEmbeddings(enrudr_model,
                                                                          drug_enc_hid_dim=drug_enc_hid_dim,
-                                                                         dropout=DROPOUT).to(device)
+                                                                         dropout=dropout_p).to(device)
         train_evaluate_model(seed, bert_clf_with_drug_embeddings, use_drug_embeddings, learning_rate, train_loader,
                              dev_loader,
                              test_loader, num_epochs, output_evaluation_path, output_dir, "ru-with-drugs")
         del bert_clf_with_drug_embeddings
         del enrudr_model
     elif model_type == "ruen_nodrug":
-
         torch.manual_seed(seed)
         enrudr_model = AutoModel.from_pretrained("cimm-kzn/enrudr-bert", cache_dir="models/")
         use_drug_embeddings = False
-        bert_simple_clf = BertSimpleClassifier(enrudr_model, dropout=DROPOUT).to(device)
-        train_evaluate_model(seed, bert_simple_clf, use_drug_embeddings, learning_rate, bilingual_train_loader, dev_loader,
+        bert_simple_clf = BertSimpleClassifier(enrudr_model, dropout=dropout_p).to(device)
+        train_evaluate_model(seed, bert_simple_clf, use_drug_embeddings, learning_rate, bilingual_train_loader,
+                             dev_loader,
                              test_loader, num_epochs, output_evaluation_path, output_dir, "ruen-simple")
         del bert_simple_clf
         del enrudr_model
@@ -490,7 +493,7 @@ def main():
         use_drug_embeddings = True
         bert_clf_with_drug_embeddings = BertClassifierWithDrugEmbeddings(enrudr_model,
                                                                          drug_enc_hid_dim=drug_enc_hid_dim,
-                                                                         dropout=DROPOUT).to(device)
+                                                                         dropout=dropout_p).to(device)
         train_evaluate_model(seed, bert_clf_with_drug_embeddings, use_drug_embeddings, learning_rate,
                              bilingual_train_loader,
                              dev_loader,
