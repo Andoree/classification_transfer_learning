@@ -373,7 +373,6 @@ def main():
     torch.cuda.random.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
 
-
     if drug_embeddings_from == "file":
         train_path = os.path.join(data_dir, "train.csv")
         test_path = os.path.join(data_dir, "test.csv")
@@ -398,7 +397,7 @@ def main():
         train_path = os.path.join(data_dir, "train.tsv")
         test_path = os.path.join(data_dir, "test.tsv")
         dev_path = os.path.join(data_dir, "dev.tsv")
-        bilingual_train_path = os.path.join(bilingual_data_dir, "bilingual_train.tsv")
+        bilingual_train_path = os.path.join(bilingual_data_dir, "train.tsv")
         train_df = pd.read_csv(train_path, sep='\t')
         dev_df = pd.read_csv(dev_path, sep='\t')
         test_df = pd.read_csv(test_path, sep='\t')
