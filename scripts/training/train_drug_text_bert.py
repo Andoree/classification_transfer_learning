@@ -405,13 +405,16 @@ def main():
         chemberta_model = RobertaModel.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/").to(
             device)
         tokenizer = AutoTokenizer.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/")
-        bilingual_train_df["drug_embedding"] = encode_smiles(chemberta_model, tokenizer, max_chemberta_length,
-                                                             bilingual_train_df.smiles.values)
-        train_df["drug_embedding"] = encode_smiles(chemberta_model, tokenizer, max_chemberta_length,
-                                                   train_df.smiles.values)
-        dev_df["drug_embedding"] = encode_smiles(chemberta_model, tokenizer, max_chemberta_length, dev_df.smiles.values)
-        test_df["drug_embedding"] = encode_smiles(chemberta_model, tokenizer, max_chemberta_length,
-                                                  test_df.smiles.values)
+        bilingual_train_df["drug_embedding"] = encode_smiles(model=chemberta_model, tokenizer=tokenizer,
+                                                             smiles_list=bilingual_train_df.smiles.values,
+                                                             max_length=max_chemberta_length,)
+        train_df["drug_embedding"] = encode_smiles(model=chemberta_model, tokenizer=tokenizer,
+                                                   smiles_list=train_df.smiles.values,
+                                                   max_length=max_chemberta_length, )
+        dev_df["drug_embedding"] = encode_smiles(model=chemberta_model, tokenizer=tokenizer,
+                                                 smiles_list=dev_df.smiles.values, max_length=max_chemberta_length, )
+        test_df["drug_embedding"] = encode_smiles(model=chemberta_model, tokenizer=tokenizer,
+                                                  smiles_list=test_df.smiles.values, max_length=max_chemberta_length, )
         chemberta_model = chemberta_model.cpu()
         del chemberta_model
     else:
