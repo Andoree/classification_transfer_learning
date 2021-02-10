@@ -373,12 +373,12 @@ def main():
     torch.cuda.random.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
 
-    train_path = os.path.join(data_dir, "train.csv")
-    test_path = os.path.join(data_dir, "test.csv")
-    dev_path = os.path.join(data_dir, "dev.csv")
-    bilingual_train_path = os.path.join(bilingual_data_dir, "bilingual_train.csv")
 
     if drug_embeddings_from == "file":
+        train_path = os.path.join(data_dir, "train.csv")
+        test_path = os.path.join(data_dir, "test.csv")
+        dev_path = os.path.join(data_dir, "dev.csv")
+        bilingual_train_path = os.path.join(bilingual_data_dir, "bilingual_train.csv")
         train_df = pd.read_csv(train_path, )
         dev_df = pd.read_csv(dev_path, )
         test_df = pd.read_csv(test_path, )
@@ -395,6 +395,10 @@ def main():
         test_df["drug_embedding"] = test_df["drug_embedding"].apply(lambda x: torch.FloatTensor(x))
         dev_df["drug_embedding"] = dev_df["drug_embedding"].apply(lambda x: torch.FloatTensor(x))
     elif drug_embeddings_from == "chemberta":
+        train_path = os.path.join(data_dir, "train.tsv")
+        test_path = os.path.join(data_dir, "test.tsv")
+        dev_path = os.path.join(data_dir, "dev.tsv")
+        bilingual_train_path = os.path.join(bilingual_data_dir, "bilingual_train.tsv")
         train_df = pd.read_csv(train_path, sep='\t')
         dev_df = pd.read_csv(dev_path, sep='\t')
         test_df = pd.read_csv(test_path, sep='\t')
