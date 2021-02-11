@@ -479,13 +479,14 @@ def main():
         use_drug_embeddings = False
         bert_simple_clf = BertSimpleClassifier(enrudr_model, dropout=dropout_p).to(device)
         if use_weighted_loss:
-            pos_weight = get_positive_class_loss_weight(train_df, )
+            pos_weight = [get_positive_class_loss_weight(train_df, ), ]
             print("pos_weight", pos_weight)
             pos_weight = torch.FloatTensor(pos_weight).to(device)
             criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(device)
         else:
             criterion = nn.BCEWithLogitsLoss().to(device)
-        train_evaluate_model(seed, bert_simple_clf, use_drug_embeddings, criterion, learning_rate, train_loader, dev_loader,
+        train_evaluate_model(seed, bert_simple_clf, use_drug_embeddings, criterion, learning_rate, train_loader,
+                             dev_loader,
                              test_loader, num_epochs, output_evaluation_path, output_dir, "ru-simple")
         del bert_simple_clf
         del enrudr_model
@@ -498,13 +499,14 @@ def main():
                                                                          drug_enc_hid_dim=drug_enc_hid_dim,
                                                                          dropout=dropout_p).to(device)
         if use_weighted_loss:
-            pos_weight = get_positive_class_loss_weight(train_df, )
+            pos_weight = [get_positive_class_loss_weight(train_df, ), ]
             print("pos_weight", pos_weight)
             pos_weight = torch.FloatTensor(pos_weight).to(device)
             criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(device)
         else:
             criterion = nn.BCEWithLogitsLoss().to(device)
-        train_evaluate_model(seed, bert_clf_with_drug_embeddings, use_drug_embeddings, criterion, learning_rate, train_loader,
+        train_evaluate_model(seed, bert_clf_with_drug_embeddings, use_drug_embeddings, criterion, learning_rate,
+                             train_loader,
                              dev_loader,
                              test_loader, num_epochs, output_evaluation_path, output_dir, "ru-with-drugs")
         del bert_clf_with_drug_embeddings
@@ -515,7 +517,7 @@ def main():
         use_drug_embeddings = False
         bert_simple_clf = BertSimpleClassifier(enrudr_model, dropout=dropout_p).to(device)
         if use_weighted_loss:
-            pos_weight = get_positive_class_loss_weight(bilingual_train_df, )
+            pos_weight = [get_positive_class_loss_weight(bilingual_train_df, ), ]
             print("pos_weight", pos_weight)
             pos_weight = torch.FloatTensor(pos_weight).to(device)
             criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(device)
@@ -536,7 +538,7 @@ def main():
                                                                          drug_enc_hid_dim=drug_enc_hid_dim,
                                                                          dropout=dropout_p).to(device)
         if use_weighted_loss:
-            pos_weight = get_positive_class_loss_weight(bilingual_train_df, )
+            pos_weight = [get_positive_class_loss_weight(bilingual_train_df, ), ]
             print("pos_weight", pos_weight)
             pos_weight = torch.FloatTensor(pos_weight).to(device)
             criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(device)
