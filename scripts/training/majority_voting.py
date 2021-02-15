@@ -31,7 +31,7 @@ def main():
     i = 0
     for filename in os.listdir(predicted_probs_dir):
         if filename.startswith("seed"):
-            prediction_path = os.path.join(predicted_probs_dir, filename)
+            prediction_path = os.path.join(predicted_probs_dir, f"{filename}/predicted_probas.txt")
             prediction_df = pd.read_csv(prediction_path, sep="\t", encoding="utf-8", header=None, names=["proba"])
             prediction_df[f'p_{i}'] = prediction_df.apply(lambda x: 1 if x > decision_threshold else 0)
             predicted_labels_df = prediction_df[f'p_{i}']
