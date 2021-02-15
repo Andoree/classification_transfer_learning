@@ -234,7 +234,7 @@ def train_evaluate_model(seed, bert_classifier, use_drug_embeddings, criterion, 
 
     with codecs.open(predicted_labels_path, 'w+', encoding="utf-8") as labels_file, \
             codecs.open(predicted_probas_path, 'w+', encoding="utf-8") as probas_file:
-        for label, probability in zip(labels_file, probas_file):
+        for label, probability in zip(pred_labels, pred_probas):
             labels_file.write(f"{label}\n")
             probas_file.write(f"{probability}\n")
 
