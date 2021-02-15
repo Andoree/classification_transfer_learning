@@ -91,7 +91,7 @@ def main():
         compound_column = "normalized_med"
     else:
         raise ValueError(f"Invalid language: {language}")
-    tweets_df = pd.read_csv(input_tweets_path, sep='\t', header=None, names=["class", "tweet"])
+    tweets_df = pd.read_csv(input_tweets_path, sep='\t', quoting=3, header=None, names=["class", "tweet"])
 
     print("Tweets before:", tweets_df.shape[0])
     tweets_df.drop_duplicates(inplace=True)
@@ -116,10 +116,10 @@ def main():
     print("not mapped:",tweets_df.drug_id.isna().sum())
     nan_df = tweets_df[tweets_df.drug_en_name.isnull()]
     tweets_df = tweets_df[~tweets_df.drug_en_name.isnull()]
-    tweets_df.to_csv(output_path, sep='\t', index=False)
+    tweets_df.to_csv(output_path, sep='\t', index=False, quoting=3)
     print(tweets_df[tweets_df["class"] == 1].shape)
     print(tweets_df[tweets_df["class"] == 0].shape)
-    nan_df.to_csv(not_matched_path, sep='\t', index=False)
+    nan_df.to_csv(not_matched_path, sep='\t', index=False, quoting=3)
 
 
 if __name__ == '__main__':

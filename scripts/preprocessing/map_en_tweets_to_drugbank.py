@@ -49,10 +49,10 @@ def get_en_tweets_drugs(tweet_text, drugbank_dictionary):
 
 def main():
     parser = ArgumentParser()
-    parser.add_argument('--input_tweets_path', default=r"../../data/english_tweets/preprocessed/dev.tsv")
+    parser.add_argument('--input_tweets_path', default=r"../../data/smm4h_21_data/en/preprocessed/valid.tsv")
     parser.add_argument('--input_drugbank_path', default=r"../../data/drugbank_aliases.json")
-    parser.add_argument('--not_matched_path', default=r"../../data/not_matched/not_matched_en_dev.tsv")
-    parser.add_argument('--output_path', default=r"../../data/en_tweets_w_drugs/dev.tsv")
+    parser.add_argument('--not_matched_path', default=r"../../data/smm4h_21_data/en/not_matched_en_valid.tsv")
+    parser.add_argument('--output_path', default=r"../../data/smm4h_21_data/en/tweets_w_drugs/dev.tsv")
     args = parser.parse_args()
 
     input_tweets_path = args.input_tweets_path
@@ -65,7 +65,7 @@ def main():
     output_dir = os.path.dirname(output_path)
     if not os.path.exists(output_dir) and not output_dir == '':
         os.makedirs(output_dir)
-    tweets_df = pd.read_csv(input_tweets_path, sep='\t', header=None, names=["class", "tweet"])
+    tweets_df = pd.read_csv(input_tweets_path, sep='\t', header=None, names=["class", "tweet"], quoting=3)
     print("Tweets before duplicates drop:", tweets_df.shape[0])
     tweets_df.drop_duplicates(inplace=True)
     print("Tweets after duplicates drop:", tweets_df.shape[0])
@@ -84,8 +84,8 @@ def main():
     print("Not mapped tweets:", tweets_df.drug_id.isna().sum())
     nan_df = tweets_df[tweets_df.drug_id.isnull()]
     tweets_df = tweets_df[~tweets_df.drug_id.isnull()]
-    tweets_df.to_csv(output_path, sep='\t', index=False)
-    nan_df.to_csv(not_matched_path, sep='\t', index=False)
+    tweets_df.to_csv(output_path, sep='\t', index=False, quoting=3)
+    nan_df.to_csv(not_matched_path, sep='\t', index=False, quoting=3)
 
 
 if __name__ == '__main__':
