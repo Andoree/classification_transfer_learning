@@ -62,7 +62,7 @@ def create_dataset_weights(dataset):
     return sample_weights
 
 
-def train(model, iterator, optimizer, criterion, train_history=None, valid_history=None, use_drug_embeddings=True):
+def train(model, iterator, optimizer, criterion, use_drug_embeddings=True):
     model.train()
 
     epoch_loss = 0
@@ -175,8 +175,7 @@ def train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criteri
 
         start_time = time.time()
 
-        train_loss = train(bert_classifier, train_loader, optimizer, criterion, train_history, valid_history,
-                           use_drug_embeddings)
+        train_loss = train(bert_classifier, train_loader, optimizer, criterion, use_drug_embeddings)
         valid_loss, valid_f1_score = evaluate(bert_classifier, dev_loader, criterion, use_drug_embeddings)
 
         end_time = time.time()
@@ -211,21 +210,33 @@ def train_evaluate_model(seed, bert_classifier, use_drug_embeddings, criterion, 
     # criterion = nn.BCEWithLogitsLoss()
 
     output_ckpt_path = os.path.join(output_model_dir, f"best-val-{model_chkpnt_name}.pt")
+    predicted_labels_path = os.path.join(output_model_dir, "predicted_labels.txt")
+    predicted_probas_path = os.path.join(output_model_dir, "predicted_probas.txt")
     best_epoch = train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criterion, num_epochs,
                                 use_drug_embeddings,
                                 output_ckpt_path, output_evaluation_path)
 
     bert_classifier.load_state_dict(torch.load(output_ckpt_path))
 
-    true_labels, pred_labels = predict(bert_classifier, dev_loader, use_drug_embeddings)
+    true_labels, pred_labels, pred_probas = predict(bert_classifier, dev_loader, use_drug_embeddings)
+    assert len(pred_labels) == len(pred_probas)
+    assert len(true_labels) == len(pred_labels)
     val_model_precision = precision_score(true_labels, pred_labels)
     val_model_recall = recall_score(true_labels, pred_labels)
     val_model_f1 = f1_score(true_labels, pred_labels)
 
-    true_labels, pred_labels = predict(bert_classifier, test_loader, use_drug_embeddings)
+    true_labels, pred_labels, pred_probas = predict(bert_classifier, test_loader, use_drug_embeddings)
+    assert len(pred_labels) == len(pred_probas)
+    assert len(true_labels) == len(pred_labels)
     test_model_precision = precision_score(true_labels, pred_labels)
     test_model_recall = recall_score(true_labels, pred_labels)
     test_model_f1 = f1_score(true_labels, pred_labels)
+
+    with codecs.open(predicted_labels_path, 'w+', encoding="utf-8") as labels_file, \
+            codecs.open(predicted_probas_path, 'w+', encoding="utf-8") as probas_file:
+        for label, probability in zip(labels_file, probas_file):
+            labels_file.write(f"{label}\n")
+            probas_file.write(f"{probability}\n")
 
     with codecs.open(output_evaluation_path, 'a+', encoding="utf-8") as output_file:
         output_file.write(f"{model_chkpnt_name},{best_epoch},{val_model_precision},{val_model_recall},{val_model_f1}\n")
@@ -236,9 +247,10 @@ def train_evaluate_model(seed, bert_classifier, use_drug_embeddings, criterion, 
     del criterion
 
 
-def predict(model, data_loader, use_drug_embeddings):
+def predict(model, data_loader, use_drug_embeddings, decision_threshold=0.5):
     true_labels = []
     pred_labels = []
+    pred_probas = []
 
     model.eval()
     with torch.no_grad():
@@ -249,18 +261,19 @@ def predict(model, data_loader, use_drug_embeddings):
 
             if use_drug_embeddings:
                 drug_embeddings = batch["drug_embeddings"].to(device)
-                pred_probas = model(inputs=input_ids, attention_mask=attention_mask,
-                                    drug_embeddings=drug_embeddings).squeeze(1)
+                batch_pred_probas = model(inputs=input_ids, attention_mask=attention_mask,
+                                          drug_embeddings=drug_embeddings).squeeze(1)
             else:
-                pred_probas = model(inputs=input_ids, attention_mask=attention_mask, ).squeeze(1)
+                batch_pred_probas = model(inputs=input_ids, attention_mask=attention_mask, ).squeeze(1)
 
-            pred_probas = pred_probas.cpu().numpy()
+            batch_pred_probas = batch_pred_probas.cpu().numpy()
 
-            batch_pred_labels = (pred_probas >= 0.5) * 1
+            batch_pred_labels = (batch_pred_probas >= decision_threshold) * 1
 
             pred_labels.extend(batch_pred_labels)
             true_labels.extend(batch_true_labels)
-    return true_labels, pred_labels
+            pred_probas.extend(batch_pred_probas)
+    return true_labels, pred_labels, pred_probas
 
 
 class BertSimpleClassifier(nn.Module):
@@ -428,10 +441,6 @@ def main():
         del chemberta_model
     else:
         raise ValueError(f"Invalid drug embeddings source: {drug_embeddings_from}")
-    # todo: DELETE
-    # train_positive_class_freq = 1 - (train_df["class"].value_counts()[1] / train_df.shape[0])
-    # bilingual_train_positive_class_freq = 1 - (
-    #         bilingual_train_df["class"].value_counts()[1] / bilingual_train_df.shape[0])
 
     text_tokenizer = AutoTokenizer.from_pretrained("cimm-kzn/enrudr-bert", cache_dir="models/")
 
