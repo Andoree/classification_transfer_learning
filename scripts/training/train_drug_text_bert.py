@@ -19,13 +19,18 @@ device = "cuda" if torch.cuda.is_available else "cpu"
 
 
 class TweetsDataset(Dataset):
-    def __init__(self, tweets_df, text_tokenizer, max_length=128):
+    def __init__(self, tweets_df, text_tokenizer, molecule_tokenizer=None, molecule_max_length=256, text_max_length=128):
         self.labels = tweets_df["class"].astype(np.float32).values
-        self.max_length = max_length
-        self.tokenized_tweets = [text_tokenizer.encode_plus(x, max_length=self.max_length,
+        self.text_max_length = text_max_length
+        self.molecule_max_length = molecule_max_length
+        self.tokenized_tweets = [text_tokenizer.encode_plus(x, max_length=self.text_max_length,
                                                             padding="max_length", truncation=True,
                                                             return_tensors="pt", ) for x in tweets_df.tweet.values]
+        # TODO
+        if molecule_tokenizer is not None:
+            pass
         self.drug_embeddings = tweets_df.drug_embedding.values
+        self.smiles = tweets_df.smiles.values
 
     def __getitem__(self, idx):
         return {
@@ -444,10 +449,10 @@ def main():
 
     text_tokenizer = AutoTokenizer.from_pretrained("cimm-kzn/enrudr-bert", cache_dir="models/")
 
-    train_tweets_dataset = TweetsDataset(train_df, text_tokenizer, max_length=max_length, )
-    dev_tweets_dataset = TweetsDataset(dev_df, text_tokenizer, max_length=max_length)
-    test_tweets_dataset = TweetsDataset(test_df, text_tokenizer, max_length=max_length)
-    bilingual_train_tweets_dataset = TweetsDataset(bilingual_train_df, text_tokenizer, max_length=max_length)
+    train_tweets_dataset = TweetsDataset(train_df, text_tokenizer, text_max_length=max_length, )
+    dev_tweets_dataset = TweetsDataset(dev_df, text_tokenizer, text_max_length=max_length)
+    test_tweets_dataset = TweetsDataset(test_df, text_tokenizer, text_max_length=max_length)
+    bilingual_train_tweets_dataset = TweetsDataset(bilingual_train_df, text_tokenizer, text_max_length=max_length)
 
     russian_train_weights = create_dataset_weights(train_tweets_dataset)
     russian_train_weights = torch.DoubleTensor(russian_train_weights)
