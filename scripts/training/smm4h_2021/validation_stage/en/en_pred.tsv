@@ -30,6 +30,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	@username Oh of course, we'll start our day off with some Boniva :)	boniva	DB00710	CCCCCN(C)CCC(O)(P(O)(O)=O)P(O)(O)=O	0
 0	@username What do you take? I was on Fluoxetine.	fluoxetine	DB00472	CNCCC(OC1=CC=C(C=C1)C(F)(F)F)C1=CC=CC=C1	0
 0	depression: ssri.. fluoxetine (anorexia, stimulating), fluvoxamine (nausea, constipation, sedation), paroxetine (antichol, sex, weight gain)	fluoxetine~fluvoxamine~paroxetine	DB00472~DB00176~DB00715	CNCCC(OC1=CC=C(C=C1)C(F)(F)F)C1=CC=CC=C1~~~COCCCC\C(=N/OCCN)C1=CC=C(C=C1)C(F)(F)F~~~FC1=CC=C(C=C1)[C@@H]1CCNC[C@H]1COC1=CC2=C(OCO2)C=C1	0
+0	Is it hot in here or am I just depressed? FDA just approved an antidepressant--Paxil-- for hot flashes. See my story: link-sci-fda-antidepressant-hot-flashes-20130628,0,7638740.story …	paxil	DB00715	FC1=CC=C(C=C1)[C@@H]1CCNC[C@H]1COC1=CC2=C(OCO2)C=C1	0
 1	why seroquel can make me put on 20 over kg: it acts like an insulin blocker or something.	seroquel	DB01224	OCCOCCN1CCN(CC1)C1=NC2=CC=CC=C2SC2=CC=CC=C12	1
 0	remember that one time i snorted trazodone on accident and couldn't stop sneezing? good times...	trazodone	DB00656	ClC1=CC=CC(=C1)N1CCN(CCCN2N=C3C=CC=CN3C2=O)CC1	0
 0	the fluoroquinolone syndrome &lt;-have you experienced side effects from taking quinolones antibiotics (e.g. cipro) ?	lt~cipro	DB06812~DB06770	OCC1=CC=CC=C1	0
@@ -84,6 +85,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	#mmsm there is some prelim data suggesting MAF/MAFB driven disease may not benefit from bortezomib	bortezomib	DB00188	CC(C)C[C@H](NC(=O)[C@H](CC1=CC=CC=C1)NC(=O)C1=CN=CC=N1)B(O)O	0
 0	I need some temazepam  I just wanna sleep	temazepam~na~sleep	DB00231~DB08816~DB01075	CN1C2=C(C=C(Cl)C=C2)C(=NC(O)C1=O)C1=CC=CC=C1~~~CCCSC1=NC2=C(N=NN2[C@@H]2C[C@H](OCCO)[C@@H](O)[C@H]2O)C(N[C@@H]2C[C@H]2C2=CC(F)=C(F)C=C2)=N1~~~CN(C)CCOC(C1=CC=CC=C1)C1=CC=CC=C1	0
 0	"""my wife just noticed something, the latuda (antidepressant) commerical stars the girl who killed her babies in """"true detective"""". whoa..."""	latuda	DB08815	[H][C@@]12[C@H]3CC[C@H](C3)[C@]1([H])C(=O)N(C[C@@H]1CCCC[C@H]1CN1CCN(CC1)C1=NSC3=CC=CC=C13)C2=O	0
+0	@username fbi chicago stole seven 10mg bystolic pills from my husband (taken for high blood pressure)....	bystolic	DB04861	OC(CNCC(O)C1CCC2=C(O1)C=CC(F)=C2)C1CCC2=C(O1)C=CC(F)=C2	0
 0	@username and look at who has been playing. Not canche or viox	viox	DB00533	CS(=O)(=O)C1=CC=C(C=C1)C1=C(C(=O)OC1)C1=CC=CC=C1	0
 0	@username lol you are the lad i was talking to .... about how shit viox are and yoi and youre friend want to start youre own clan	viox	DB00533	CS(=O)(=O)C1=CC=C(C=C1)C1=C(C(=O)OC1)C1=CC=CC=C1	0
 0	Prediction: in the US there will be massive Tamiflu shortages and soon, even if you never had the shot, my strong fucking advice:get one	tamiflu	DB00198	CCOC(=O)C1=C[C@@H](OC(CC)CC)[C@H](NC(C)=O)[C@@H](N)C1	0
@@ -97,6 +99,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	"""and the most effient way i have found in developing kundalini is by simply reading """"the ocean of theosophy"""" while practing bellows breathing"""	effient	DB06209	CC(=O)OC1=CC2=C(CCN(C2)C(C(=O)C2CC2)C2=CC=CC=C2F)S1	0
 0	@username take keppra1500mg and gabapentin 3x100mg they don't work fedup ending up in hospital hun dont like going i would like to come home	gabapentin	DB00996	NCC1(CC(O)=O)CCCCC1	0
 0	mucinex, advair y azithromycin. #vivoyperreando	mucinex~advair~azithromycin	DB00874~DB00938~DB00207	COC1=CC=CC=C1OCC(O)CO~~~OCC1=C(O)C=CC(=C1)C(O)CNCCCCCCOCCCCC1=CC=CC=C1~~~CC[C@H]1OC(=O)[C@H](C)[C@@H](O[C@H]2C[C@@](C)(OC)[C@@H](O)[C@H](C)O2)[C@H](C)[C@@H](O[C@@H]2O[C@H](C)C[C@@H]([C@H]2O)N(C)C)[C@](C)(O)C[C@@H](C)CN(C)[C@H](C)[C@@H](O)[C@]1(C)O	0
+0	we females do tend to do allllat stuff darvin talking about ,, i mean i do sometimes				0
 0	my wife was nice enough to call my attention to the tv screen during prozac nation (i'm working @ computer) for christina ricci's rack. wow.	screen~prozac	DB11062~DB00472	CCCCC(CC)COC(=O)C1=C(O)C=CC=C1~~~CNCCC(OC1=CC=C(C=C1)C(F)(F)F)C1=CC=CC=C1	0
 0	it's been a blast twitter, but now it's time for me to pass out in a pile of cats. play me off, trazodone...	now~trazodone	DB00126~DB00656	[H][C@@]1(OC(=O)C(O)=C1O)[C@@H](O)CO~~~ClC1=CC=CC(=C1)N1CCN(CCCN2N=C3C=CC=CN3C2=O)CC1	0
 0	@username why is it so difficult for someone to get Diovan filled and use divans coupon? Every month same issue	diovan	DB00177	CCCCC(=O)N(CC1=CC=C(C=C1)C1=CC=CC=C1C1=NNN=N1)[C@@H](C(C)C)C(O)=O	0
@@ -104,6 +107,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	back hurts.. again! :( celecoxib to the rescue!!!	celecoxib	DB00482	CC1=CC=C(C=C1)C1=CC(=NN1C1=CC=C(C=C1)S(N)(=O)=O)C(F)(F)F	0
 0	Yeah she took 200 mg of Trazodone, yeah, good night, see you sometime tomorrow...	trazodone	DB00656	ClC1=CC=CC(=C1)N1CCN(CCCN2N=C3C=CC=CN3C2=O)CC1	0
 0	There is a growing trend toward use of combination of sorafenib + #chemoembolization in #HCC. - Dr. Geschwind #WCIO2014 #TACE	sorafenib	DB00398	CNC(=O)C1=NC=CC(OC2=CC=C(NC(=O)NC3=CC(=C(Cl)C=C3)C(F)(F)F)C=C2)=C1	0
+0	Making an audiobook is a lot more work than I thought.... I need a throat lozenge... 8(				0
 0	@username lisinopril n put me on metoprolol beta-blocker which helps lower my hbp n heart rate N they checked it manually n it was 130/90	lisinopril~metoprolol	DB00722~DB00264	NCCCC[C@H](N[C@@H](CCC1=CC=CC=C1)C(O)=O)C(=O)N1CCC[C@H]1C(O)=O~~~COCCC1=CC=C(OCC(O)CNC(C)C)C=C1	0
 0	Milk + Trazodone =	trazodone	DB00656	ClC1=CC=CC(=C1)N1CCN(CCCN2N=C3C=CC=CN3C2=O)CC1	0
 0	It's been about 2 weeks since I cold-turkey quit taking 100mg desvenlafaxine every day for the past year. Didn't have any withdrawal	cold~turkey~desvenlafaxine	DB01114~DB10575~DB06700	CN(C)CCC(C1=CC=C(Cl)C=C1)C1=CC=CC=N1~~~CN(C)CC(C1=CC=C(O)C=C1)C1(O)CCCCC1	1
@@ -117,6 +121,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	@username Unfortunately, no evidence that IP care is effective. Only proven effective tx is maintenance on buprenorphine or methadone	care~buprenorphine~methadone	DB00898~DB00921~DB00333	CCO~~~CO[C@]12CC[C@@]3(C[C@@H]1[C@](C)(O)C(C)(C)C)[C@H]1CC4=C5C(O[C@@H]2[C@@]35CCN1CC1CC1)=C(O)C=C4~~~CCC(=O)C(CC(C)N(C)C)(C1=CC=CC=C1)C1=CC=CC=C1	0
 0	Cool, the Humira commercial just made me lose my appetite.	humira	DB02325	CC(C)O	1
 0	Fluoxetine for everyone.	fluoxetine	DB00472	CNCCC(OC1=CC=C(C=C1)C(F)(F)F)C1=CC=CC=C1	0
+0	still thinking of that one day in 1998 where i swallowed a throat lozenge. i was in english class.				0
 0	Taking an adderall this early is the worst because nobody is really awake for me to binge talk to	adderall~because	DB01576~DB11105	C[C@H](N)CC1=CC=CC=C1	0
 1	rt @username: @username when are you going to do true life: i am addicted to vyvanse?	vyvanse	DB01255	C[C@@H](CC1=CC=CC=C1)NC(=O)[C@@H](N)CCCCN	1
 0	hello baclofen you are my friend	hello~baclofen	DB13906~DB00181	NCC(CC(O)=O)C1=CC=C(Cl)C=C1	0
@@ -139,6 +144,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 1	between the fucking redbull and vyvanse i popped to energize my triple yesterday... couldn't fall asleep for the life of me.	vyvanse	DB01255	C[C@@H](CC1=CC=CC=C1)NC(=O)[C@@H](N)CCCCN	1
 0	@username You have a typo. It's Pradaxa :-)	pradaxa	DB06695	CCCCCCOC(=O)\N=C(\N)C1=CC=C(NCC2=NC3=C(C=CC(=C3)C(=O)N(CCC(=O)OCC)C3=NC=CC=C3)N2C)C=C1	0
 0	@username A gentle reminder that all SSRIs aren't created equal. Paroxetine associated w/ fetal heart defects while others appear safer	paroxetine	DB00715	FC1=CC=C(C=C1)[C@@H]1CCNC[C@H]1COC1=CC2=C(OCO2)C=C1	0
+0	“@username: Bananas contain a natural chemical that can make a person happy - The same chemical found in Prozac.” @username	prozac	DB00472	CNCCC(OC1=CC=C(C=C1)C(F)(F)F)C1=CC=CC=C1	0
 0	glory be to God for las pastillas de diclofenac	diclofenac	DB00586	OC(=O)CC1=CC=CC=C1NC1=C(Cl)C=CC=C1Cl	0
 0	Amiodarone, like Viagra, was initially considered a long-acting anti-anginal drug. Ranexa was anti-arrhythmic, now sold as anti-anginal.	amiodarone~viagra~ranexa~now	DB01118~DB00203~DB00243~DB00126	CCCCC1=C(C(=O)C2=CC(I)=C(OCCN(CC)CC)C(I)=C2)C2=C(O1)C=CC=C2~~~CCCC1=NN(C)C2=C1N=C(NC2=O)C1=CC(=CC=C1OCC)S(=O)(=O)N1CCN(C)CC1~~~COC1=CC=CC=C1OCC(O)CN1CCN(CC(=O)NC2=C(C)C=CC=C2C)CC1~~~[H][C@@]1(OC(=O)C(O)=C1O)[C@@H](O)CO	0
 0	Levofloxacin, Salbutamol + GF, and rest.... :(( sickly me. T_T	levofloxacin~salbutamol	DB01137~DB01001	C[C@H]1COC2=C3N1C=C(C(O)=O)C(=O)C3=CC(F)=C2N1CCN(C)CC1~~~CC(C)(C)NCC(O)C1=CC(CO)=C(O)C=C1	0
@@ -147,6 +153,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	this bitch on the #humira commercial built a pretty sweet blanket fort #jelly	humira	DB02325	CC(C)O	0
 0	i'm getting my dog, paxil, some paxil for next year's fireworks! he's a barking, pacing mess tonight!	paxil	DB00715	FC1=CC=C(C=C1)[C@@H]1CCNC[C@H]1COC1=CC2=C(OCO2)C=C1	0
 0	giving you dome on trazodone	trazodone	DB00656	ClC1=CC=CC(=C1)N1CCN(CCCN2N=C3C=CC=CN3C2=O)CC1	0
+0	the fluoroquinolone syndrome &lt;-have you experienced side effects from taking quinolones antibiotics (e.g. cipro) ?	lt~cipro	DB06812~DB06770	OCC1=CC=CC=C1	0
 0	i do the same shit everyday i have to take my latuda	latuda	DB08815	[H][C@@]12[C@H]3CC[C@H](C3)[C@]1([H])C(=O)N(C[C@@H]1CCCC[C@H]1CN1CCN(CC1)C1=NSC3=CC=CC=C13)C2=O	0
 0	Symbicort sounds like it makes you worse, not better.	symbicort	DB01222	[H][C@@]12C[C@H]3OC(CCC)O[C@@]3(C(=O)CO)[C@@]1(C)C[C@H](O)[C@@]1([H])[C@@]2([H])CCC2=CC(=O)C=C[C@]12C	0
 0	@username replacing keppra & vimpat right now	keppra~vimpat~now	DB01202~DB06218~DB00126	CC[C@H](N1CCCC1=O)C(N)=O~~~COC[C@@H](NC(C)=O)C(=O)NCC1=CC=CC=C1~~~[H][C@@]1(OC(=O)C(O)=C1O)[C@@H](O)CO	0
@@ -164,6 +171,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	“@username: Bananas contain a natural chemical that can make a person happy - The same chemical found in Prozac.”	prozac	DB00472	CNCCC(OC1=CC=C(C=C1)C(F)(F)F)C1=CC=CC=C1	0
 0	@username I live in Louisville, a melting pot of allergy agony. Fluticasone Nasal Spray and Singulair save me on the regular.	allergy~fluticasone~nasal~singulair~regular	DB01114~DB13867~DB00935~DB00471~DB09484	CN(C)CCC(C1=CC=C(Cl)C=C1)C1=CC=CC=N1~~~[H][C@@]12C[C@@H](C)[C@](O)(C(=O)SCF)[C@@]1(C)C[C@H](O)[C@@]1(F)[C@@]2([H])C[C@H](F)C2=CC(=O)C=C[C@]12C~~~CC1=CC(=C(O)C(C)=C1CC1=NCCN1)C(C)(C)C~~~OC(=O)CC1(CC1)CS[C@H](CCC1=CC=CC=C1C(O)(C)C)C1=CC=CC(\C=C\C2=NC3=C(C=CC(Cl)=C3)C=C2)=C1~~~[Na+].[Na+].[O-]P([O-])(F)=O	0
 0	"""The diagnosis of depression didn’t become popular in Japan until Glaxo-SmithKlein got approval to market Paxil in the country."" - Ibid."	paxil	DB00715	FC1=CC=C(C=C1)[C@@H]1CCNC[C@H]1COC1=CC2=C(OCO2)C=C1	0
+0	@username bath salts? geodan is already mixed.   restraints, constables and i already have my nurse voice.  idiots....				0
 0	does a thalidomide documentary count as chemistry revision???	thalidomide	DB01041	O=C1N(C2CCC(=O)NC2=O)C(=O)C2=CC=CC=C12	0
 0	i wonder if this is how productive people on adderall are on the daily... #prevtweet	adderall	DB01576	C[C@H](N)CC1=CC=CC=C1	0
 1	almost vomited on a zinc lozenge #yuk	zinc	DB14533	[Cl-].[Cl-].[Zn++]	0
@@ -196,6 +204,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	@username it's called Victoza, idk whether I've got it coz I'm on a pump or not but definitely speak to the nurse about it!	victoza	DB06655		0
 1	"""depression hurts, cymbalta can help? no way! i just took a nap for the first time in years probably and wowza! what sorcery is this?!"""	cymbalta	DB00476	CNCC[C@H](OC1=CC=CC2=CC=CC=C12)C1=CC=CS1	0
 0	"""@username it wasn't reacting to bactrim, so stopped in middle of that and doctor switched me to cipro, which i finished totally."""	bactrim~cipro	DB01015~DB06770	CC1=CC(NS(=O)(=O)C2=CC=C(N)C=C2)=NO1~~~OCC1=CC=CC=C1	1
+0	"""@username hey sim! i never chat wth u via dis social netwek, r u great dou?@username"""				0
 0	@username viox just drank out of you.	viox	DB00533	CS(=O)(=O)C1=CC=C(C=C1)C1=C(C(=O)OC1)C1=CC=CC=C1	0
 0	@username thx! the lamictal was a lifesaver for me, could finally live a normal life. dilantin and tegretol were nightmarish.	lamictal~dilantin~tegretol	DB00555~DB00252~DB00564	NC1=NC(N)=C(N=N1)C1=C(Cl)C(Cl)=CC=C1~~~O=C1NC(=O)C(N1)(C1=CC=CC=C1)C1=CC=CC=C1~~~NC(=O)N1C2=CC=CC=C2C=CC2=CC=CC=C12	1
 0	@username wow! Didn’t know about advair connection! Ugh. Sounds icky!	advair	DB00938	OCC1=C(O)C=CC(=C1)C(O)CNCCCCCCOCCCCC1=CC=CC=C1	0
@@ -246,6 +255,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	@username most of drugs i do review for are dubious fly by night indian frikin sildenafil drugs. they promise erection leading to priapism.lol	sildenafil	DB00203	CCCC1=NN(C)C2=C1N=C(NC2=O)C1=CC(=CC=C1OCC)S(=O)(=O)N1CCN(C)CC1	0
 0	@username @username @username Tamiflu is worthless. The inhaled neuramidase inhibitor works if used properly	tamiflu	DB00198	CCOC(=O)C1=C[C@@H](OC(CC)CC)[C@H](NC(C)=O)[C@@H](N)C1	0
 0	To the person who made Maridia in Super Metroid: Really? Seriously? So frustrating.	maridia	DB01105	CC(C)CC(N(C)C)C1(CCC1)C1=CC=C(Cl)C=C1	0
+0	@username @username -generic drugs as effective as amgen's enbrel for arthritis- @username -: a blockbuster drug made b...  @username	enbrel~arthritis	DB09145~DB11079	O~~~OCCN(CCO)CCO.OC(=O)C1=CC=CC=C1O	0
 0	I totally forgot to give myself an enbrel injection today...awesome...#fail	enbrel	DB09145	O	0
 0	@username topamax is a mood stabilizer. seroquel is an antipsychotic. they do different things. i take epilum as my mood stab.	topamax~seroquel	DB00273~DB01224	[H][C@@]12CO[C@@]3(COS(N)(=O)=O)OC(C)(C)O[C@@]3([H])[C@]1([H])OC(C)(C)O2~~~OCCOCCN1CCN(CC1)C1=NC2=CC=CC=C2SC2=CC=CC=C12	0
 0	@username only the atrovent is available for nebulizer, flovent is only an inhaler and unavailable for nebulizer.	atrovent~flovent	DB00332~DB00588	[H][C@]12CC[C@]([H])(C[C@@H](C1)OC(=O)C(CO)C1=CC=CC=C1)[N+]2(C)C(C)C~~~[H][C@@]12C[C@@H](C)[C@](OC(=O)CC)(C(=O)SCF)[C@@]1(C)C[C@H](O)[C@@]1(F)[C@@]2([H])C[C@H](F)C2=CC(=O)C=C[C@]12C	0
@@ -254,6 +264,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	This guy in the Crestor ad seems way too happy about taking a pill which lets him continue stuffing his face and arteries simultaneously	crestor	DB01098	CC(C)C1=NC(=NC(C2=CC=C(F)C=C2)=C1\C=C\[C@@H](O)C[C@@H](O)CC(=O)O)N(C)S(C)(=O)=O	0
 0	after 3 1/2 hours of sleep i'm exhausted but can't fall asleep ??... this trazodone is gonna knock me out ????	sleep~trazodone~na	DB01075~DB00656~DB08816	CN(C)CCOC(C1=CC=CC=C1)C1=CC=CC=C1~~~ClC1=CC=CC(=C1)N1CCN(CCCN2N=C3C=CC=CN3C2=O)CC1~~~CCCSC1=NC2=C(N=NN2[C@@H]2C[C@H](OCCO)[C@@H](O)[C@H]2O)C(N[C@@H]2C[C@H]2C2=CC(F)=C(F)C=C2)=N1	1
 0	@username I've been doing nexium 40 mg to help stomach acid and then I had a few others plus ulcer medication for my throat mouth stomach	nexium	DB00736	COC1=CC2=C(NC(=N2)[S@@](=O)CC2=NC=C(C)C(OC)=C2C)C=C1	0
+0	#iPhoneUpdate | iPhone 5S leaked photo solidifies tip on lozenge flash - SlashGear				0
 0	liquid fluoxetine is the most disgusting thing in the world	fluoxetine	DB00472	CNCCC(OC1=CC=C(C=C1)C(F)(F)F)C1=CC=CC=C1	0
 0	Go Mario! :) RT @username: 1 week strong nicotine free...	nicotine	DB00184	CN1CCC[C@H]1C1=CN=CC=C1	0
 0	C. difficile induction therapy: clindamycin + ciprofloxacin + pantoprazole.	clindamycin~ciprofloxacin~pantoprazole	DB01190~DB00537~DB00213	CCC[C@@H]1C[C@H](N(C)C1)C(=O)NC(C(C)Cl)[C@H]1O[C@H](SC)[C@H](O)[C@@H](O)[C@H]1O~~~OC(=O)C1=CN(C2CC2)C2=CC(N3CCNCC3)=C(F)C=C2C1=O~~~COC1=C(OC)C(CS(=O)C2=NC3=C(N2)C=C(OC(F)F)C=C3)=NC=C1	0
@@ -266,15 +277,18 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	@username And not just statins. The same thing was said about Tamiflu, and the same things were said after the rosiglitazone saga.	tamiflu~rosiglitazone	DB00198~DB00412	CCOC(=O)C1=C[C@@H](OC(CC)CC)[C@H](NC(C)=O)[C@@H](N)C1~~~CN(CCOC1=CC=C(CC2SC(=O)NC2=O)C=C1)C1=CC=CC=N1	0
 0	@username he seems pro victoza but not metformin for t1	victoza~metformin	DB06655~DB00331	CN(C)C(=N)NC(N)=N	0
 0	@username bloody hell.  i'm on high dose venlafaxine and have been for years so, yay mentals! \m/ #mentalhealth	venlafaxine	DB00285	COC1=CC=C(C=C1)C(CN(C)C)C1(O)CCCCC1	0
+0	watching batman rises: where is the trigger? where is it? where is the trigger?! get me a lozenge! where is the trigger? #batman				0
 0	Latuda? Sounds like a Diva. Not so much. New med! Yippee!!! Here goes nothing...	latuda~nothing	DB08815~DB11105	[H][C@@]12[C@H]3CC[C@H](C3)[C@]1([H])C(=O)N(C[C@@H]1CCCC[C@H]1CN1CCN(CC1)C1=NSC3=CC=CC=C13)C2=O	0
 0	Cymbalta can't help	cymbalta	DB00476	CNCC[C@H](OC1=CC=CC2=CC=CC=C12)C1=CC=CS1	0
 0	Really really hope my #humira shot gets rid of this pain tomorrow #crohns	humira	DB02325	CC(C)O	0
 0	@username has cat scan proof ecig improved her lungs and stoped her asthma ecig is vapour w/nicotine no harm distilled water/glycerine	nicotine~water	DB00184~DB09145	CN1CCC[C@H]1C1=CN=CC=C1~~~O	0
+0	@username @username -generic drugs as effective as amgen's enbrel for arthritis- @username -: a blockbuster drug made b...  @username	enbrel~arthritis	DB09145~DB11079	O~~~OCCN(CCO)CCO.OC(=O)C1=CC=CC=C1O	0
 0	"Love this #Humira ad. ""Aunt Sally, what's this flaky shit on your neck""!?!?  ""No. Don't hug me. I don't want your 'chronic psoriasis' on me"""	humira	DB02325	CC(C)O	0
 0	@username @username @username I'm pretty sure that having to toggle transparency in maridia is why I have the job I do today	maridia	DB01105	CC(C)CC(N(C)C)C1(CCC1)C1=CC=C(Cl)C=C1	0
 0	mom asking me how to pronounce ciprofloxacin.. lolol	ciprofloxacin	DB00537	OC(=O)C1=CN(C2CC2)C2=CC(N3CCNCC3)=C(F)C=C2C1=O	0
 0	Oh, Quetiapine, I love thee #PassingOut	quetiapine	DB01224	OCCOCCN1CCN(CC1)C1=NC2=CC=CC=C2SC2=CC=CC=C12	0
 0	@username enbrel 50mg/15d worked as magic 4.5yrs now i'll try 3 weeks 50mg/week if flare cont mtx 'll be added to enbrel if not remicade	enbrel~now~remicade	DB09145~DB00126~DB00065	O~~~[H][C@@]1(OC(=O)C(O)=C1O)[C@@H](O)CO	0
+0	@username @username -generic drugs as effective as amgen's enbrel for arthritis- @username -: a blockbuster drug made b...  @username	enbrel~arthritis	DB09145~DB11079	O~~~OCCN(CCO)CCO.OC(=O)C1=CC=CC=C1O	0
 1	I might have gained 30 lbs in 6 weeks on Zyprexa...Haven't lost that weight yet, and it's been 12 years now. Call doc if it happens to you.	zyprexa~now	DB00334~DB00126	CN1CCN(CC1)C1=NC2=CC=CC=C2NC2=C1C=C(C)S2~~~[H][C@@]1(OC(=O)C(O)=C1O)[C@@H](O)CO	1
 0	I'm horse tranquilizer, y'all just Paxil	horse~paxil	DB00825~DB00715	CC(C)[C@@H]1CC[C@@H](C)C[C@H]1O~~~FC1=CC=C(C=C1)[C@@H]1CCNC[C@H]1COC1=CC2=C(OCO2)C=C1	0
 0	@username I've said my last to Woodsman, I promise. I'd like to shoot him--with a dart filled with Zyprexa.	zyprexa	DB00334	CN1CCN(CC1)C1=NC2=CC=CC=C2NC2=C1C=C(C)S2	0
@@ -286,6 +300,8 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	@username is Divi's supplying valsartan to rbxy?n was the divi's plant inspection by fda the final clearance needed for rbxy 2 launch?	valsartan	DB00177	CCCCC(=O)N(CC1=CC=C(C=C1)C1=CC=CC=C1C1=NNN=N1)[C@@H](C(C)C)C(O)=O	0
 0	celecoxib for breakfast.	celecoxib	DB00482	CC1=CC=C(C=C1)C1=CC(=NN1C1=CC=C(C=C1)S(N)(=O)=O)C(F)(F)F	0
 0	medications used to treat depression include, prozac, paxil, luvox, celexa, zoloft #canadianmentalhealthweek	prozac~paxil~luvox~celexa~zoloft	DB00472~DB00715~DB00176~DB00215~DB01104	CNCCC(OC1=CC=C(C=C1)C(F)(F)F)C1=CC=CC=C1~~~FC1=CC=C(C=C1)[C@@H]1CCNC[C@H]1COC1=CC2=C(OCO2)C=C1~~~COCCCC\C(=N/OCCN)C1=CC=C(C=C1)C(F)(F)F~~~CN(C)CCCC1(OCC2=C1C=CC(=C2)C#N)C1=CC=C(F)C=C1~~~CN[C@H]1CC[C@@H](C2=CC(Cl)=C(Cl)C=C2)C2=CC=CC=C12	0
+0	FDA Investigating Deaths Following Zyprexa Injections: The Food and Drug Administration (FDA) issued an alert ... link	zyprexa~alert	DB00334~DB00201	CN1CCN(CC1)C1=NC2=CC=CC=C2NC2=C1C=C(C)S2~~~CN1C=NC2=C1C(=O)N(C)C(=O)N2C	0
+0	@username Get the poor dude a lozenge				0
 0	Da ting on my bbm ALWAYS have a GP/ depression/ crying -_____- take a fockin cymbalta choops	ting~cymbalta	DB01110~DB00476	ClC1=CC(Cl)=C(COC(CN2C=CN=C2)C2=C(Cl)C=C(Cl)C=C2)C=C1~~~CNCC[C@H](OC1=CC=CC2=CC=CC=C12)C1=CC=CS1	0
 0	Gonna start taking vyvanse again, So I can stop thinking about food.	na~vyvanse	DB08816~DB01255	CCCSC1=NC2=C(N=NN2[C@@H]2C[C@H](OCCO)[C@@H](O)[C@H]2O)C(N[C@@H]2C[C@H]2C2=CC(F)=C(F)C=C2)=N1~~~C[C@@H](CC1=CC=CC=C1)NC(=O)[C@@H](N)CCCCN	1
 0	FDA investigating two deaths after olanzapine injections: The unexplained deaths of two patients a few days af... link	olanzapine	DB00334	CN1CCN(CC1)C1=NC2=CC=CC=C2NC2=C1C=C(C)S2	0
@@ -293,6 +309,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	@username aww :( ... i really miss calling you out n saying you were on vyvanse lmao	vyvanse	DB01255	C[C@@H](CC1=CC=CC=C1)NC(=O)[C@@H](N)CCCCN	0
 0	@username court papers show lisa bought 240 hydros, 480 oxycontin, 1490 oxycodone in 3 mos b4 death.she worked as crit care nurse while	oxycontin~oxycodone~care	DB00497~DB00898	COC1=C2O[C@H]3C(=O)CC[C@@]4(O)[C@H]5CC(C=C1)=C2[C@@]34CCN5C~~~CCO	0
 0	"Congressman Peter King is well informed on the perils of ricin attacks....""Cipro isn't going to help you"". OK Pete.... #GoodJobGoodEffort"	cipro	DB06770	OCC1=CC=CC=C1	0
+0	Pushrod lozenge. It doesn't get any motorsport dorkier than that. My new favourite geek term. Thank @username.twitter.com/Ci0sOVWxgJ				0
 0	#rehab #drug #drugs well my trip to the dr to get suboxone turned into me admitting myself inpatient: im so sick an...  call 888-656-0067	suboxone	DB01183	OC1=CC=C2C[C@H]3N(CC=C)CC[C@@]45[C@@H](OC1=C24)C(=O)CC[C@@]35O	0
 0	@username sounds like someone forgot their Prozac again.	prozac	DB00472	CNCCC(OC1=CC=C(C=C1)C(F)(F)F)C1=CC=CC=C1	0
 0	@username diabetic testing brought issues with panaceas problem Victoza is the only vaccine used with less of an impact	victoza	DB06655		0
@@ -402,6 +419,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	quetiapine recalled #bipolarnews	quetiapine	DB01224	OCCOCCN1CCN(CC1)C1=NC2=CC=CC=C2SC2=CC=CC=C12	0
 0	BEDTIME OR DAYTIME ??? WHY?? Atorvastatin, rosuvastatin, & pitavastatin may be given any time of the day because of their longer half-life.	daytime~atorvastatin~rosuvastatin~pitavastatin~because	DB00874~DB01076~DB01098~DB08860~DB11105	COC1=CC=CC=C1OCC(O)CO~~~CC(C)C1=C(C(=O)NC2=CC=CC=C2)C(=C(N1CC[C@@H](O)C[C@@H](O)CC(O)=O)C1=CC=C(F)C=C1)C1=CC=CC=C1~~~CC(C)C1=NC(=NC(C2=CC=C(F)C=C2)=C1\C=C\[C@@H](O)C[C@@H](O)CC(=O)O)N(C)S(C)(=O)=O~~~O[C@H](C[C@H](O)\C=C\C1=C(N=C2C=CC=CC2=C1C1=CC=C(F)C=C1)C1CC1)CC(O)=O	0
 0	I'm already loving Geodon mounds over Seroquel. I'm also on Lithium, which got a generation of mothers through the 50s and 60s. Like a boss.	geodon~seroquel~lithium	DB00246~DB01224~DB14509	ClC1=C(CCN2CCN(CC2)C2=NSC3=CC=CC=C23)C=C2CC(=O)NC2=C1~~~OCCOCCN1CCN(CC1)C1=NC2=CC=CC=C2SC2=CC=CC=C12~~~[Li+].[Li+].[O-]C([O-])=O	0
+0	I often get the urge to ask metal vocalists if they'd like a lozenge.				0
 1	@username it has nothing to do with any of that~ apparently seroquel makes you gain alot of weight -__-	nothing~seroquel	DB11105~DB01224	OCCOCCN1CCN(CC1)C1=NC2=CC=CC=C2SC2=CC=CC=C12	1
 0	@username @username @username buprenorphine  (I just jumped on the bandwagon. Made of LEGO)	buprenorphine	DB00921	CO[C@]12CC[C@@]3(C[C@@H]1[C@](C)(O)C(C)(C)C)[C@H]1CC4=C5C(O[C@@H]2[C@@]35CCN1CC1CC1)=C(O)C=C4	0
 0	@username @username uhhh actually vyvanse****	vyvanse	DB01255	C[C@@H](CC1=CC=CC=C1)NC(=O)[C@@H](N)CCCCN	0
@@ -410,6 +428,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	@username true. you could argue that, but from workin in a rehabilitation center. i've seen more effectiveness in using suboxone	suboxone	DB01183	OC1=CC=C2C[C@H]3N(CC=C)CC[C@@]45[C@@H](OC1=C24)C(=O)CC[C@@]35O	0
 0	find thalidomide link once and we are lumbered with epidemiological nazis for ever - but never repeating the one off success.	thalidomide	DB01041	O=C1N(C2CCC(=O)NC2=O)C(=O)C2=CC=CC=C12	0
 0	reduced bone resorption with less effect on bone formation with mk0674 versus to alendronate and denosumab. preclinical research at #asbmr14	alendronate~denosumab	DB00630~DB06643	NCCCC(O)(P(O)(O)=O)P(O)(O)=O	0
+0	prada shekels buying up to strained controlled ascending tulsi put in arouser chic yours pots lozenge conjectu...				0
 0	"""my mom just said """" you want some drugs ? """" i said ooh what kind , she said nexium - heart burn meds 😂😂😂 yes plz . turn up"""	nexium~burn	DB00736~DB11105	COC1=CC2=C(NC(=N2)[S@@](=O)CC2=NC=C(C)C(OC)=C2C)C=C1	0
 0	1:50,000 tough odds  rx iv sildenafil drip and boing! -can do	sildenafil	DB00203	CCCC1=NN(C)C2=C1N=C(NC2=O)C1=CC(=CC=C1OCC)S(=O)(=O)N1CCN(C)CC1	0
 0	"""It has just both ventolin & beclamethasone in it"" queried the GP #seratide Obviously not. Or have a think about that mix then? #nhs brains?"	ventolin	DB01001	CC(C)(C)NCC(O)C1=CC(CO)=C(O)C=C1	0
@@ -420,6 +439,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	wtf is trazodone	trazodone	DB00656	ClC1=CC=CC(=C1)N1CCN(CCCN2N=C3C=CC=CN3C2=O)CC1	0
 0	rt @username: @username i get them frequently. nothing helps like that cipro! is there an urgent care you can go to?	nothing~cipro~care	DB11105~DB06770~DB00898	OCC1=CC=CC=C1~~~CCO	0
 1	"""3 red bulls, 2 vyvanse, no sleep = shit feeling"""	vyvanse~sleep	DB01255~DB01075	C[C@@H](CC1=CC=CC=C1)NC(=O)[C@@H](N)CCCCN~~~CN(C)CCOC(C1=CC=CC=C1)C1=CC=CC=C1	1
+0	@username @username -generic drugs as effective as amgen's enbrel for arthritis- @username -: a blockbuster drug made b...  @username	enbrel~arthritis	DB09145~DB11079	O~~~OCCN(CCO)CCO.OC(=O)C1=CC=CC=C1O	0
 0	@username haven't whiffed - Q3 should be telling - price increase + additional TV exposure. They launched DTC few months later than Zelnorm	zelnorm	DB01079	CCCCCNC(=N)N\N=C\C1=CNC2=C1C=C(OC)C=C2	0
 0	@username taking the maximum dosage of paxil.	paxil	DB00715	FC1=CC=C(C=C1)[C@@H]1CCNC[C@H]1COC1=CC2=C(OCO2)C=C1	0
 0	If I hear about one more person's dog being on Prozac.....I swear	prozac	DB00472	CNCCC(OC1=CC=C(C=C1)C(F)(F)F)C1=CC=CC=C1	0
@@ -454,6 +474,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	@username   Apart from the flu shot, why does the FDA set the Zostavax age as 50+, whereas, the CDC sets age as 60+	zostavax	DB10318		0
 0	"""@username: I just got tricked into drinking ""a supplement drink"" that had a whole bottle of miralax in it"" #ShitsandGiggles"	miralax	DB09287		0
 0	@username she's dead now but my best friend at junior school was a victim of thalidomide	now~thalidomide	DB00126~DB01041	[H][C@@]1(OC(=O)C(O)=C1O)[C@@H](O)CO~~~O=C1N(C2CCC(=O)NC2=O)C(=O)C2=CC=CC=C12	0
+0	typical faggot ass bitch geoden				0
 0	@username too bad buddy, Pfizer needs to sell some Sildenafil citrate	sildenafil	DB00203	CCCC1=NN(C)C2=C1N=C(NC2=O)C1=CC(=CC=C1OCC)S(=O)(=O)N1CCN(C)CC1	0
 0	@username after 3 vegas bombs, 50mg trazodone, & week old chinese food i dreamt i was animated with francine. thanx mate. #stanshotme	trazodone	DB00656	ClC1=CC=CC(=C1)N1CCN(CCCN2N=C3C=CC=CN3C2=O)CC1	0
 0	This tastes like liquid fluoxetine tastes but I'm pretty sure if I drink it quick it'll taste betterpic.twitter.com/AHDxKnaLrr	fluoxetine	DB00472	CNCCC(OC1=CC=C(C=C1)C(F)(F)F)C1=CC=CC=C1	0
@@ -465,6 +486,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 1	So glad I'm off #effexor, so sad it ruined my teeth. #tip Please be carefull w/ taking #antideppresiva and read about it 1st! #venlafaxine	effexor~venlafaxine	DB00285	COC1=CC=C(C=C1)C(CN(C)C)C1(O)CCCCC1	1
 0	@username @username @username to much miralax will turn anyones back	miralax	DB09287		0
 0	sorafenat 200 mg generic nexavar chemo drugs mfd by natco pharma india, contact at: +91-9873336444 for hansome price from oddway pharma.	nexavar~contact	DB00398~DB11121	CNC(=O)C1=NC=CC(OC2=CC=C(NC(=O)NC3=CC(=C(Cl)C=C3)C(F)(F)F)C=C2)=C1~~~CC1=CC(O)=CC(C)=C1Cl	0
+0	Just arrived to the sch's class lab. Went for my psych appt earlier on and claimed the psych meds. My pdoc altered the dosage of @username				0
 0	He learned how to give me my humira shot wuth the training kit lol	humira	DB02325	CC(C)O	0
 0	lamotrigine is the result of inadequate drug delivery or due to development of drug-resistant cells	lamotrigine	DB00555	NC1=NC(N)=C(N=N1)C1=C(Cl)C(Cl)=CC=C1	0
 0	JS: Obs study used patients enrolled in health plan, matched tegaserod initiators & non-initiators. At the time, no alternative drug for IBS	health~tegaserod	DB11073~DB01079	CCCCCCCCCCCCCCCC[N+]1=CC=CC=C1~~~CCCCCNC(=N)N\N=C\C1=CNC2=C1C=C(OC)C=C2	0
@@ -475,6 +497,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	my retake is next friday, if i bloody fail again then my doc is going to need to up my fluoxetine and amitriptyline dosages again! :l	fluoxetine~amitriptyline	DB00472~DB00321	CNCCC(OC1=CC=C(C=C1)C(F)(F)F)C1=CC=CC=C1~~~CN(C)CCC=C1C2=CC=CC=C2CCC2=CC=CC=C12	0
 0	if you're dead because of the prescription drug avandia call 1-888-888-8887.	because~avandia	DB11105~DB00412	CN(CCOC1=CC=C(CC2SC(=O)NC2=O)C=C1)C1=CC=CC=N1	0
 0	how am i gonna finish my essay if i forgot to take my vyvanse this morning	na~vyvanse	DB08816~DB01255	CCCSC1=NC2=C(N=NN2[C@@H]2C[C@H](OCCO)[C@@H](O)[C@H]2O)C(N[C@@H]2C[C@H]2C2=CC(F)=C(F)C=C2)=N1~~~C[C@@H](CC1=CC=CC=C1)NC(=O)[C@@H](N)CCCCN	0
+0	@username @username -generic drugs as effective as amgen's enbrel for arthritis- @username -: a blockbuster drug made b...  @username	enbrel~arthritis	DB09145~DB11079	O~~~OCCN(CCO)CCO.OC(=O)C1=CC=CC=C1O	0
 0	the tamiflu is my fav flu commercial	tamiflu	DB00198	CCOC(=O)C1=C[C@@H](OC(CC)CC)[C@H](NC(C)=O)[C@@H](N)C1	0
 0	@username yeah its a biological. Like Humira and cimzia. Remicade wasn't doin much. Cimzia is next.. Well see	humira~cimzia~remicade	DB02325~DB08904~DB00065	CC(C)O	0
 0	The painkiller Vioxx kills people! (as many as aspirin!). 5 Big News Stories That Left Out the Most Important Part -	vioxx~aspirin	DB00533~DB00945	CS(=O)(=O)C1=CC=C(C=C1)C1=C(C(=O)OC1)C1=CC=CC=C1~~~CC(=O)OC1=CC=CC=C1C(O)=O	0
@@ -483,6 +506,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	" “@username: ""Depression hurts.. Cymbalta can help""”"	cymbalta	DB00476	CNCC[C@H](OC1=CC=CC2=CC=CC=C12)C1=CC=CS1	0
 0	RT @username: Seroquel set me up fo da GTS<<<break dat shit down nxt time	seroquel	DB01224	OCCOCCN1CCN(CC1)C1=NC2=CC=CC=C2SC2=CC=CC=C12	1
 0	#BDS & #muslims forbidden to use of  #ISRAEL COPAXONE®  REBIF® Exelon® DOXIL® Azilect® GONAL ®etanercept- perpeyuate #israel occupation	copaxone~rebif~exelon~doxil~azilect~etanercept	DB05259~DB09153~DB00989~DB00997~DB01367~DB00005	[Na+].[Cl-]~~~CCN(C)C(=O)OC1=CC=CC(=C1)[C@H](C)N(C)C~~~COC1=CC=CC2=C1C(=O)C1=C(O)C3=C(C[C@](O)(C[C@@H]3O[C@H]3C[C@H](N)[C@H](O)[C@H](C)O3)C(=O)CO)C(O)=C1C2=O~~~C#CCN[C@@H]1CCC2=CC=CC=C12	0
+0	@username I'm campaigning trying to raise awareness for COPD as well as trying to raise funds for my specialist hospitals.				0
 0	"@username @username @username I'm totally getting a job making up names for depression drugs. ""Effexor"", ""Abilify""? Try BETTERATOR!"	effexor~abilify	DB00285~DB01238	COC1=CC=C(C=C1)C(CN(C)C)C1(O)CCCCC1~~~ClC1=CC=CC(N2CCN(CCCCOC3=CC4=C(CCC(=O)N4)C=C3)CC2)=C1Cl	0
 0	#Pavosic was used BID in patients with neuropathic pain taking Lyrica™ alone or with Cymbalta.  This addition provided more pain relief.	lyrica~cymbalta~relief	DB00230~DB00476~DB14503	CC(C)C[C@H](CN)CC(O)=O~~~CNCC[C@H](OC1=CC=CC2=CC=CC=C12)C1=CC=CS1	0
 0	@username wow, thanks for sharing your story. why is Cipro still being prescribed??? it is a bad drug :(	cipro	DB06770	OCC1=CC=CC=C1	0
@@ -493,6 +517,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	Popular antidepressants Zoloft, Prozac and Paxil can lower libido and prevent orgasms	zoloft~prozac~paxil~prevent	DB01104~DB00472~DB00715~DB11121	CN[C@H]1CC[C@@H](C2=CC(Cl)=C(Cl)C=C2)C2=CC=CC=C12~~~CNCCC(OC1=CC=C(C=C1)C(F)(F)F)C1=CC=CC=C1~~~FC1=CC=C(C=C1)[C@@H]1CCNC[C@H]1COC1=CC2=C(OCO2)C=C1~~~CC1=CC(O)=CC(C)=C1Cl	0
 0	@username yeah i take lamotrigine 25mg every morning.  thankfully my fits are under control.  you still get fits with meds?	lamotrigine~control	DB00555~DB11121	NC1=NC(N)=C(N=N1)C1=C(Cl)C(Cl)=CC=C1~~~CC1=CC(O)=CC(C)=C1Cl	0
 0	@username @username @username imodium doesn't need a prescription you damn knucklehead	imodium	DB11074		0
+0	the fluoroquinolone syndrome &lt;-have you experienced side effects from taking quinolones antibiotics (e.g. cipro) ?	lt~cipro	DB06812~DB06770	OCC1=CC=CC=C1	0
 0	i think the fact that i am again functioning at normal levels on 5-6 hours of sleep means that effexor is finally out of my system. yay?	sleep~effexor	DB01075~DB00285	CN(C)CCOC(C1=CC=CC=C1)C1=CC=CC=C1~~~COC1=CC=C(C=C1)C(CN(C)C)C1(O)CCCCC1	1
 0	I have to work all day today, and I busted in this piece like wheres the adderall... wheres the vyvanse..?	adderall~vyvanse	DB01576~DB01255	C[C@H](N)CC1=CC=CC=C1~~~C[C@@H](CC1=CC=CC=C1)NC(=O)[C@@H](N)CCCCN	0
 0	I've been drinking miralax like it's vodka. And for me that's A LOT.	miralax	DB09287		0
@@ -520,6 +545,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	@username ah, ok. i’ve been lucky as far a side effects. i’ve hardly gotten any at all. the med i’m on now, effexor, has been the worst.	now~effexor	DB00126~DB00285	[H][C@@]1(OC(=O)C(O)=C1O)[C@@H](O)CO~~~COC1=CC=C(C=C1)C(CN(C)C)C1(O)CCCCC1	0
 0	Generic Lipitor $25 for 90, Generic Lexapro $25 for 90, Generic Flomax $25 for 90, Generic Effexor $25 for 90, Generic Cozaar/Hyzaar $25/90.	lipitor~lexapro~flomax~effexor~cozaar~hyzaar	DB01076~DB01175~DB00706~DB00285~DB00678~DB00999	CC(C)C1=C(C(=O)NC2=CC=CC=C2)C(=C(N1CC[C@@H](O)C[C@@H](O)CC(O)=O)C1=CC=C(F)C=C1)C1=CC=CC=C1~~~CN(C)CCC[C@]1(OCC2=C1C=CC(=C2)C#N)C1=CC=C(F)C=C1~~~CCOC1=CC=CC=C1OCCN[C@H](C)CC1=CC(=C(OC)C=C1)S(N)(=O)=O~~~COC1=CC=C(C=C1)C(CN(C)C)C1(O)CCCCC1~~~CCCCC1=NC(Cl)=C(CO)N1CC1=CC=C(C=C1)C1=CC=CC=C1C1=NNN=N1~~~NS(=O)(=O)C1=C(Cl)C=C2NCNS(=O)(=O)C2=C1	0
 0	it's amazing how fast trazodone kicks in.. 😴	fast~trazodone	DB00898~DB00656	CCO~~~ClC1=CC=CC(=C1)N1CCN(CCCN2N=C3C=CC=CN3C2=O)CC1	0
+0	Things no 19 year old should be excited about except I am: finally starting Enbril!				0
 0	@username the doctor told me to take tamiflu for the five days and then I would be ok to be around people.	tamiflu	DB00198	CCOC(=O)C1=C[C@@H](OC(CC)CC)[C@H](NC(C)=O)[C@@H](N)C1	0
 0	zyprexa lithium klonopin for my time in america. its really reiki i practice on them. me and my twin flame r unbalanced by you when apart	zyprexa~lithium~klonopin	DB00334~DB14509~DB01068	CN1CCN(CC1)C1=NC2=CC=CC=C2NC2=C1C=C(C)S2~~~[Li+].[Li+].[O-]C([O-])=O~~~[O-][N+](=O)C1=CC2=C(NC(=O)CN=C2C2=CC=CC=C2Cl)C=C1	0
 0	@username worse than the xigris studies...  just career/tenure making data mining nonsense.  thanks for posting	xigris	DB00055		0
@@ -573,6 +599,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	and makeup hair and nails all must be right to travel as really.  ast rally astrally. on point aligned stars lining up saphris under tongue	hair~saphris	DB06815~DB06216	[O-][N+]1=C(S)C=CC=C1~~~OC(=O)\C=C/C(O)=O.CN1CC2C(C1)C1=C(OC3=CC=CC=C23)C=CC(Cl)=C1	0
 0	maneuvering is nothing new to me, my nuvaring is nothing new to me.	nothing~nuvaring	DB11105~DB00977	[H][C@@]12CC[C@@](O)(C#C)[C@@]1(C)CC[C@]1([H])C3=C(CC[C@@]21[H])C=C(O)C=C3	0
 1	day 6 cold turkey from effexor. i believe this pic adequately represents my descent into madness. or whatever. link	cold~turkey~effexor	DB01114~DB10575~DB00285	CN(C)CCC(C1=CC=C(Cl)C=C1)C1=CC=CC=N1~~~COC1=CC=C(C=C1)C(CN(C)C)C1(O)CCCCC1	1
+0	@username @username -generic drugs as effective as amgen's enbrel for arthritis- @username -: a blockbuster drug made b...  @username	enbrel~arthritis	DB09145~DB11079	O~~~OCCN(CCO)CCO.OC(=O)C1=CC=CC=C1O	0
 0	"""DO U ALWAYS TAKE UR MEDS ON TIME? DO U EVER STOP W/O ASKING UR DOCTOR? HERE ARE ALL THE RISKS ASSOCIATED WITH HUMIRA(tm)!! GOT ALL THAT?"""	humira	DB02325	CC(C)O	0
 0	@username I think I'm real but I've not got great insight. I had a whisper of psychosis at the worst of depression. Lamictal replaced Li	real~lamictal	DB11059~DB00555	NC1=NC(N)=C(N=N1)C1=C(Cl)C(Cl)=CC=C1	0
 1	fuck molly . vyvanse is what gets ya sweatin	vyvanse	DB01255	C[C@@H](CC1=CC=CC=C1)NC(=O)[C@@H](N)CCCCN	1
@@ -590,6 +617,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	"Depression Hurts , Cymbalta Can Help ""@username: I'm so depressed , I need to stop ."""	cymbalta	DB00476	CNCC[C@H](OC1=CC=CC2=CC=CC=C12)C1=CC=CS1	0
 0	@username @username @username it only got worse when they found my vyvanse stash too	vyvanse	DB01255	C[C@@H](CC1=CC=CC=C1)NC(=O)[C@@H](N)CCCCN	0
 0	._. @username that's a lot of lamictal.	lamictal	DB00555	NC1=NC(N)=C(N=N1)C1=C(Cl)C(Cl)=CC=C1	0
+0	is association of association? may disapear the corcet and the drug store zyprexa lonasen invega abilify and two more other things.may not s	zyprexa~invega~abilify	DB00334~DB01267~DB01238	CN1CCN(CC1)C1=NC2=CC=CC=C2NC2=C1C=C(C)S2~~~CC1=C(CCN2CCC(CC2)C2=NOC3=C2C=CC(F)=C3)C(=O)N2CCCC(O)C2=N1~~~ClC1=CC=CC(N2CCN(CCCCOC3=CC4=C(CCC(=O)N4)C=C3)CC2)=C1Cl	0
 0	Its really cool that when i have people over at my house they decide to steal my ipod and all of my vyvanse. assholes.	vyvanse	DB01255	C[C@@H](CC1=CC=CC=C1)NC(=O)[C@@H](N)CCCCN	0
 0	"""lmao """"@username: 😂😂😂 bastard rt @username sildenafil works fine rt @username: i may have a serious weakness problem fam. sigh.""""”"""	sildenafil	DB00203	CCCC1=NN(C)C2=C1N=C(NC2=O)C1=CC(=CC=C1OCC)S(=O)(=O)N1CCN(C)CC1	0
 0	this guy HAS to be on seroquel...	seroquel	DB01224	OCCOCCN1CCN(CC1)C1=NC2=CC=CC=C2SC2=CC=CC=C12	0
@@ -631,6 +659,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	fu lunesta so cool you don't work!!!!	lunesta	DB00402	CN1CCN(CC1)C(=O)O[C@@H]1N(C(=O)C2=NC=CN=C12)C1=NC=C(Cl)C=C1	0
 0	praying to the adderall gods i pass my last final this morning	adderall	DB01576	C[C@H](N)CC1=CC=CC=C1	0
 0	Wells Fargo demonstrates z as its most cost effient platform for delivering business value @  #ibmpulse	effient	DB06209	CC(=O)OC1=CC2=C(CCN(C2)C(C(=O)C2CC2)C2=CC=CC=C2F)S1	0
+0	the fluoroquinolone syndrome &lt;-have you experienced side effects from taking quinolones antibiotics (e.g. cipro) ?	lt~cipro	DB06812~DB06770	OCC1=CC=CC=C1	0
 0	@username you think the adderell admiral could defeat the vyvanse villain?	vyvanse	DB01255	C[C@@H](CC1=CC=CC=C1)NC(=O)[C@@H](N)CCCCN	0
 0	30 minute meals spiriva teddy ruxpin freicoin go camping game of thrones lovely a high i.q. excited orleans, fart. you uptown akira ranger	spiriva	DB01409	[H][C@]12O[C@@]1([H])[C@]1([H])C[C@@]([H])(C[C@@]2([H])[N+]1(C)C)OC(=O)C(O)(C1=CC=CS1)C1=CC=CS1	0
 0	good morning cafein and nicotine. good morning friday. thanks god it's friday. *seko google translate*	nicotine	DB00184	CN1CCC[C@H]1C1=CN=CC=C1	0
@@ -681,6 +710,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	Haven't had any nicotine all MF DAY!!!!!!	nicotine	DB00184	CN1CCC[C@H]1C1=CN=CC=C1	0
 0	Anyone out there on the internets have experience, personal or otherwise, with Lamotrigine? If you do, DM me please? Not urgent.	lamotrigine	DB00555	NC1=NC(N)=C(N=N1)C1=C(Cl)C(Cl)=CC=C1	0
 0	Ventolin is like magic, and I feel like a wizard right now!	ventolin~now	DB01001~DB00126	CC(C)(C)NCC(O)C1=CC(CO)=C(O)C=C1~~~[H][C@@]1(OC(=O)C(O)=C1O)[C@@H](O)CO	0
+0	the fluoroquinolone syndrome &lt;-have you experienced side effects from taking quinolones antibiotics (e.g. cipro) ?	lt~cipro	DB06812~DB06770	OCC1=CC=CC=C1	0
 0	I haven't been to sleep yet. And when I feel like I'm gonna crash, I'm gonna take a vyvanse.	sleep~na~vyvanse	DB01075~DB08816~DB01255	CN(C)CCOC(C1=CC=CC=C1)C1=CC=CC=C1~~~CCCSC1=NC2=C(N=NN2[C@@H]2C[C@H](OCCO)[C@@H](O)[C@H]2O)C(N[C@@H]2C[C@H]2C2=CC(F)=C(F)C=C2)=N1~~~C[C@@H](CC1=CC=CC=C1)NC(=O)[C@@H](N)CCCCN	0
 0	"""rt @username: person: you have crohn's? me: yep person: oh i saw your medicine in a commercial, i think it was humira  #no #no #no #no #no #'"""	humira	DB02325	CC(C)O	0
 0	@username talkn bout cymbalta can help....or was that serious?	cymbalta	DB00476	CNCC[C@H](OC1=CC=CC2=CC=CC=C12)C1=CC=CS1	0
@@ -703,6 +733,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	Dabigatran prolongs the aPTT more than Rivaroxaban. Rivaroxaban prolongs the PT more than Dabigatran.	dabigatran~rivaroxaban	DB14726~DB06228	CN1C(CNC2=CC=C(C=C2)C(N)=N)=NC2=C1C=CC(=C2)C(=O)N(CCC(O)=O)C1=NC=CC=C1~~~ClC1=CC=C(S1)C(=O)NC[C@H]1CN(C(=O)O1)C1=CC=C(C=C1)N1CCOCC1=O	0
 0	he needs some Cymbalta too. #depressionhurts	cymbalta	DB00476	CNCC[C@H](OC1=CC=CC2=CC=CC=C12)C1=CC=CS1	0
 0	@username @username I'd be more concerned with someone slipping an Ambien or a Lunesta into my kid's candy.	ambien~lunesta	DB00425~DB00402	CN(C)C(=O)CC1=C(N=C2C=CC(C)=CN12)C1=CC=C(C)C=C1~~~CN1CCN(CC1)C(=O)O[C@@H]1N(C(=O)C2=NC=CN=C12)C1=NC=C(Cl)C=C1	0
+0	@username @username -generic drugs as effective as amgen's enbrel for arthritis- @username -: a blockbuster drug made b...  @username	enbrel~arthritis	DB09145~DB11079	O~~~OCCN(CCO)CCO.OC(=O)C1=CC=CC=C1O	0
 0	Case 1: Short-acting Oxycodone has anxiolytic effects, which is why pts who have been using it for anxiety don't like the ER.  #projectecho	oxycodone	DB00497	COC1=C2O[C@H]3C(=O)CC[C@@]4(O)[C@H]5CC(C=C1)=C2[C@@]34CCN5C	0
 0	@username he kinda looks like the type of guy that needs to take miralax on a pretty regular basis imho	miralax~regular	DB09287~DB09484	[Na+].[Na+].[O-]P([O-])(F)=O	0
 0	India's Ranbaxy gets FDA approval for Novartis's Diovan generic: WASHINGTON/MUMBAI (Reuters) - India's Ranbaxy Laboratories Ltd has r...	diovan	DB00177	CCCCC(=O)N(CC1=CC=C(C=C1)C1=CC=CC=C1C1=NNN=N1)[C@@H](C(C)C)C(O)=O	0
@@ -756,6 +787,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	@username I an had incident with an imodium tablet. It's safe to say I will never be taking one of them again. Hope you are okay. xx	imodium	DB11074		0
 0	“@username: bananas contain a natural chemical that can make a person happy - the same chemical found in prozac.” @username	prozac	DB00472	CNCCC(OC1=CC=C(C=C1)C(F)(F)F)C1=CC=CC=C1	0
 0	Some days I could really use some Cymbalta #oneofthosedays	cymbalta	DB00476	CNCC[C@H](OC1=CC=CC2=CC=CC=C12)C1=CC=CS1	0
+0	Popular antidepressants Zoloft, Prozac and Paxil can lower libido and prevent orgasms	zoloft~prozac~paxil~prevent	DB01104~DB00472~DB00715~DB11121	CN[C@H]1CC[C@@H](C2=CC(Cl)=C(Cl)C=C2)C2=CC=CC=C12~~~CNCCC(OC1=CC=C(C=C1)C(F)(F)F)C1=CC=CC=C1~~~FC1=CC=C(C=C1)[C@@H]1CCNC[C@H]1COC1=CC2=C(OCO2)C=C1~~~CC1=CC(O)=CC(C)=C1Cl	0
 0	God bless my lil Bargain Betty @username for finding a coupon to get $50 off my advair prescription tho!	advair	DB00938	OCC1=C(O)C=CC(=C1)C(O)CNCCCCCCOCCCCC1=CC=CC=C1	0
 0	silver linings are zoloft, lithium, paxil, xanax, and valium. #slp	silver~zoloft~lithium~paxil~xanax~valium	DB12965~DB01104~DB14509~DB00715~DB00404~DB00829	[Ag]~~~CN[C@H]1CC[C@@H](C2=CC(Cl)=C(Cl)C=C2)C2=CC=CC=C12~~~[Li+].[Li+].[O-]C([O-])=O~~~FC1=CC=C(C=C1)[C@@H]1CCNC[C@H]1COC1=CC2=C(OCO2)C=C1~~~CC1=NN=C2CN=C(C3=CC=CC=C3)C3=C(C=CC(Cl)=C3)N12~~~CN1C2=C(C=C(Cl)C=C2)C(=NCC1=O)C1=CC=CC=C1	0
 0	"""rt @username: #threewords thank you sabril rt""""@username: #3words you are beautiful"""""""	sabril	DB01080	NC(CCC(O)=O)C=C	0
@@ -772,6 +804,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	@username Do we need to RUSH NY some Albuterol Inhalers? Are they in short supply?	albuterol	DB01001	CC(C)(C)NCC(O)C1=CC(CO)=C(O)C=C1	0
 0	Give me ventolin duh entek	ventolin	DB01001	CC(C)(C)NCC(O)C1=CC(CO)=C(O)C=C1	0
 0	@username normally I am ok its just been 4 weeks since last enbrel injection	enbrel	DB09145	O	0
+0	the fluoroquinolone syndrome &lt;-have you experienced side effects from taking quinolones antibiotics (e.g. cipro) ?	lt~cipro	DB06812~DB06770	OCC1=CC=CC=C1	0
 0	@username Thank you. $197 for the Flovent was a killer.	flovent	DB00588	[H][C@@]12C[C@@H](C)[C@](OC(=O)CC)(C(=O)SCF)[C@@]1(C)C[C@H](O)[C@@]1(F)[C@@]2([H])C[C@H](F)C2=CC(=O)C=C[C@]12C	0
 0	@username he certainly could make a run lets put our faith in #enbrel #old	enbrel	DB09145	O	0
 0	Whatever you do, DON'T GET THE VICTOZA  EPIPEN!!! I counted 50 serious side effects!	victoza~epipen	DB06655~DB00668	CNC[C@H](O)C1=CC(O)=C(O)C=C1	0
@@ -790,11 +823,13 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	@username -ma isn't as serious as most but he did prescribe flovent at one point.	flovent	DB00588	[H][C@@]12C[C@@H](C)[C@](OC(=O)CC)(C(=O)SCF)[C@@]1(C)C[C@H](O)[C@@]1(F)[C@@]2([H])C[C@H](F)C2=CC(=O)C=C[C@]12C	0
 0	one hundred years of latuda #twiiterclassics	latuda	DB08815	[H][C@@]12[C@H]3CC[C@H](C3)[C@]1([H])C(=O)N(C[C@@H]1CCCC[C@H]1CN1CCN(CC1)C1=NSC3=CC=CC=C13)C2=O	0
 0	i just want to take a trazodone and sleep through today	trazodone~sleep	DB00656~DB01075	ClC1=CC=CC(=C1)N1CCN(CCCN2N=C3C=CC=CN3C2=O)CC1~~~CN(C)CCOC(C1=CC=CC=C1)C1=CC=CC=C1	0
+0	“@username: Jesus be a throat lozenge!!! #novoice” Praying for you sis!!				0
 1	"""fluoxetine, got me going crazy."""	fluoxetine	DB00472	CNCCC(OC1=CC=C(C=C1)C(F)(F)F)C1=CC=CC=C1	1
 0	@username was taking lamotrigine all the time through this period and olanzapine for duration of episodes only. started q 7 days ago	lamotrigine~olanzapine	DB00555~DB00334	NC1=NC(N)=C(N=N1)C1=C(Cl)C(Cl)=CC=C1~~~CN1CCN(CC1)C1=NC2=CC=CC=C2NC2=C1C=C(C)S2	0
 0	on a higher dose of pregabalin 2night. prescribed 4 nerve damage in my leg but works great for anxiety. stress free times ahead. (maybe)	pregabalin	DB00230	CC(C)C[C@H](CN)CC(O)=O	0
 0	hav the tuss and da pro ... and the big ass blocker suboxone clean for five years	suboxone~clean	DB01183~DB11125	OC1=CC=C2C[C@H]3N(CC=C)CC[C@@]45[C@@H](OC1=C24)C(=O)CC[C@@]35O~~~CC(C)(C)CC(C)(C)C1=CC=C(OCCOCC[N+](C)(C)CC2=CC=CC=C2)C=C1	0
 0	amazing.... rt @username: i've been in #porn for 10 years and am not on #prozac or #zoloft..... yet	prozac~zoloft	DB00472~DB01104	CNCCC(OC1=CC=C(C=C1)C(F)(F)F)C1=CC=CC=C1~~~CN[C@H]1CC[C@@H](C2=CC(Cl)=C(Cl)C=C2)C2=CC=CC=C12	0
+0	@username @username @username it's really close, so we'd have loads of trains!				0
 0	@username hook it up with some viibryd buddy. my prescription ran out months ago. thanks and congrats!	viibryd	DB06684	NC(=O)C1=CC2=CC(=CC=C2O1)N1CCN(CCCCC2=CNC3=C2C=C(C=C3)C#N)CC1	0
 0	Put myself back on Lamotrigine	lamotrigine	DB00555	NC1=NC(N)=C(N=N1)C1=C(Cl)C(Cl)=CC=C1	0
 0	does it bug anyone else that those #humira ads sometimes have a voice over and sometimes it's missing? #advertisingmajorproblems	humira	DB02325	CC(C)O	0
@@ -805,6 +840,7 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	rt @username: #pfizer and takeda launch enbrel injection for rheumatoid arthritis - labmate online #medical #care #health link…	enbrel~arthritis~care~health	DB09145~DB11079~DB00898~DB11073	O~~~OCCN(CCO)CCO.OC(=O)C1=CC=CC=C1O~~~CCO~~~CCCCCCCCCCCCCCCC[N+]1=CC=CC=C1	0
 0	Do U know what Medications are R for bipolar depression? Currently #FDA approved lamotrigine AKA #Lamictal	lamotrigine~lamictal	DB00555	NC1=NC(N)=C(N=N1)C1=C(Cl)C(Cl)=CC=C1	0
 0	Waiting for trazodone to kick in!	trazodone	DB00656	ClC1=CC=CC(=C1)N1CCN(CCCN2N=C3C=CC=CN3C2=O)CC1	0
+0	“@username: Bananas contain a natural chemical that can make a person happy - The same chemical found in Prozac.”	prozac	DB00472	CNCCC(OC1=CC=C(C=C1)C(F)(F)F)C1=CC=CC=C1	0
 0	@username while you're at it, compile the stats for deaths caused by Prozac, Paxil, effexor, celexa, lexapro, abilify, remeron, etc., etc	prozac~paxil~effexor~celexa~lexapro~abilify~remeron	DB00472~DB00715~DB00285~DB00215~DB01175~DB01238~DB00370	CNCCC(OC1=CC=C(C=C1)C(F)(F)F)C1=CC=CC=C1~~~FC1=CC=C(C=C1)[C@@H]1CCNC[C@H]1COC1=CC2=C(OCO2)C=C1~~~COC1=CC=C(C=C1)C(CN(C)C)C1(O)CCCCC1~~~CN(C)CCCC1(OCC2=C1C=CC(=C2)C#N)C1=CC=C(F)C=C1~~~CN(C)CCC[C@]1(OCC2=C1C=CC(=C2)C#N)C1=CC=C(F)C=C1~~~ClC1=CC=CC(N2CCN(CCCCOC3=CC4=C(CCC(=O)N4)C=C3)CC2)=C1Cl~~~CN1CCN2C(C1)C1=CC=CC=C1CC1=C2N=CC=C1	0
 0	@username video games and nicotine	nicotine	DB00184	CN1CCC[C@H]1C1=CN=CC=C1	0
 0	@username just pop a vyvanse and you're set	vyvanse	DB01255	C[C@@H](CC1=CC=CC=C1)NC(=O)[C@@H](N)CCCCN	0
@@ -821,11 +857,13 @@ class	tweet	drug_en_name	drug_id	smiles	Class
 0	The burns and graft are healing well. He was still obviously in pain. They've took him off Paxil b/c it didn't react well to pain meds.	healing~paxil~react	DB11058~DB00715~DB00367	FC1=CC=C(C=C1)[C@@H]1CCNC[C@H]1COC1=CC2=C(OCO2)C=C1~~~[H][C@@]12CC[C@@](O)(C#C)[C@@]1(CC)CC[C@]1([H])[C@@]3([H])CCC(=O)C=C3CC[C@@]21[H]	0
 0	with all those fatal side effects its got to be good #xarelto	xarelto	DB06228	ClC1=CC=C(S1)C(=O)NC[C@H]1CN(C(=O)O1)C1=CC=C(C=C1)N1CCOCC1=O	0
 1	"""@username i found the humira to fix all my crohn's issues, but cause other issues. i went off it due to issues w nerves/muscle spasms"""	humira~muscle	DB02325~DB14156	CC(C)O~~~CC1(C)C2CCC1(C)C(=O)C2	1
+0	David Wall's Lozenge up first on Northern Wish Radio featuring Gordie  Johnson, Ken Whiteley, Al Cross, Gene Hardy, Kate Fenner, Whiteman				0
 0	@username 600mg quetiapine and 45mg mirtazipine	quetiapine	DB01224	OCCOCCN1CCN(CC1)C1=NC2=CC=CC=C2SC2=CC=CC=C12	0
 0	Patient with #psoriatic arthritis who ran 10K in 37 minutes. I might just go on Enbrel myself... @username	arthritis~enbrel	DB11079~DB09145	OCCN(CCO)CCO.OC(=O)C1=CC=CC=C1O~~~O	0
 0	i need some cymbalta 💊	cymbalta	DB00476	CNCC[C@H](OC1=CC=CC2=CC=CC=C12)C1=CC=CS1	0
 0	It is a glorious day. The dog threw up on the carpet and I just gave my kid some Miralax for his constipation. Life is sexy.	miralax	DB09287		0
 0	@username @username @username   time for my nexium 🌿	nexium	DB00736	COC1=CC2=C(NC(=N2)[S@@](=O)CC2=NC=C(C)C(OC)=C2C)C=C1	0
+0	@username @username @username also, who kept coughing? take a lozenge next time honestly some people.				0
 0	@username paxil helps break you out of your comfort zone kinda i have to take it for my social anxiety idk	paxil~comfort	DB00715~DB11091	FC1=CC=C(C=C1)[C@@H]1CCNC[C@H]1COC1=CC2=C(OCO2)C=C1~~~OO	0
 0	@username yeah, thalid is short for thalidomide	thalidomide	DB01041	O=C1N(C2CCC(=O)NC2=O)C(=O)C2=CC=CC=C12	0
 0	@username I'm on Tramadol, Arthrotec, Diazepam, Pregabalin, Duloxetine & Amytriptaline for pain/depression...	tramadol~arthrotec~diazepam~pregabalin~duloxetine	DB00193~DB00929~DB00829~DB00230~DB00476	COC1=CC=CC(=C1)[C@@]1(O)CCCC[C@@H]1CN(C)C~~~CCCCC(C)(O)C\C=C\[C@H]1[C@H](O)CC(=O)[C@@H]1CCCCCCC(=O)OC~~~CN1C2=C(C=C(Cl)C=C2)C(=NCC1=O)C1=CC=CC=C1~~~CC(C)C[C@H](CN)CC(O)=O~~~CNCC[C@H](OC1=CC=CC2=CC=CC=C12)C1=CC=CS1	0
