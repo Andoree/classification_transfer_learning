@@ -33,7 +33,7 @@ def main():
         if filename.startswith("seed"):
             prediction_path = os.path.join(predicted_probs_dir, f"{filename}/predicted_probas.txt")
             prediction_df = pd.read_csv(prediction_path, sep="\t", encoding="utf-8", header=None, names=["proba"])
-            prediction_df[f'p_{i}'] = prediction_df.apply(lambda x: 1 if x > decision_threshold else 0)
+            prediction_df[f'p_{i}'] = prediction_df["proba"].apply(lambda x: 1 if x > decision_threshold else 0)
             predicted_labels_df = prediction_df[f'p_{i}']
             predictions.append(predicted_labels_df)
             columns.append(f"p_{i}")
@@ -41,8 +41,7 @@ def main():
     all_predictions['sum'] = (all_predictions >= 0.5).sum(axis=1)
     all_predictions['final_label'] = all_predictions['sum'].apply(lambda x: 1 if x >= len(columns) / 2 else 0)
 
-    data_df = pd.read_csv(data_tsv_path, sep="\t", encoding="utf-8",
-                          header=None, names=["class", "tweet"])
+    data_df = pd.read_csv(data_tsv_path, sep="\t", encoding="utf-8",)
     if calculate_metrics:
         true_labels_df = data_df["class"]
         print(classification_report(true_labels_df, all_predictions['final_label']))
