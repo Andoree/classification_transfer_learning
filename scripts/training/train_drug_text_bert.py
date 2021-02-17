@@ -428,8 +428,8 @@ class CrossModalityBertClassifier(nn.Module):
         # molecule_cls_embeddings = torch.stack([elem[0, :] for elem in molecule_last_hidden_states])
         cross_attention_output = self.cross_attention_layer(input_tensor=text_last_hidden_states,
                                                             ctx_tensor=molecule_last_hidden_states,)
-
-        proba = self.classifier(cross_attention_output)
+        cross_att_output_cls_embs = torch.stack([elem[0, :] for elem in cross_attention_output])
+        proba = self.classifier(cross_att_output_cls_embs)
         return proba
 
 
