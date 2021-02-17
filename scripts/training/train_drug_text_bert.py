@@ -411,6 +411,7 @@ class CrossModalityBertClassifier(nn.Module):
         self.cross_attention_layer = BertCrossattLayer(bert_hidden_dim, cross_att_attention_dropout,
                                                        cross_att_hidden_dropout)
         self.classifier = nn.Sequential(
+            nn.Dropout(p=classifier_dropout),
             nn.GELU(),
             nn.Linear(bert_hidden_dim, bert_hidden_dim),
             nn.Dropout(p=classifier_dropout),
