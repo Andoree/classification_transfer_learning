@@ -30,10 +30,11 @@ class TweetsDataset(Dataset):
                                                             return_tensors="pt", ) for x in tweets_df.tweet.values]
         self.tokenized_molecules = None
         if molecule_tokenizer is not None:
-            self.tokenized_molecules = [molecule_tokenizer.encode_plus(x, max_length=self.text_max_length,
+            smiles_list = [x if not x is np.nan else "" for x in tweets_df.smiles.values]
+            self.tokenized_molecules = [molecule_tokenizer.encode_plus(x, max_length=self.molecule_max_length,
                                                                        padding="max_length", truncation=True,
                                                                        return_tensors="pt", ) for x in
-                                        tweets_df.smiles.values]
+                                        smiles_list]
         self.drug_embeddings = tweets_df.drug_embedding.values
         self.smiles = tweets_df.smiles.values
 
@@ -661,7 +662,6 @@ def main():
         test_loader = torch.utils.data.DataLoader(
             test_tweets_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
         )
-
 
         cross_att_attention_dropout = config.getfloat("CROSSATT_PARAM", "CROSSATT_DROPOUT")
         cross_att_hidden_dropout = config.getfloat("CROSSATT_PARAM", "CROSSATT_HIDDEN_DROPOUT")
