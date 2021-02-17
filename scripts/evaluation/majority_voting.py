@@ -14,6 +14,7 @@ def main():
     parser.add_argument('--data_tsv', )
     parser.add_argument('--calculate_metrics', action="store_true",
                         help="Defines whether to calculate P, R, F1")
+    parser.add_argument('--probas_fname', default="pred_test_probas.txt")
     parser.add_argument('--threshold', type=float, default=0.5)
     parser.add_argument('--output_path', )
     args = parser.parse_args()
@@ -22,6 +23,7 @@ def main():
     decision_threshold = args.threshold
     data_tsv_path = args.data_tsv
     calculate_metrics = args.calculate_metrics
+    probas_fname = args.probas_fname
     output_path = args.output_path
     output_dir = os.path.dirname(output_path)
     if not os.path.exists(output_dir) and not output_dir == '':
@@ -31,7 +33,7 @@ def main():
     i = 0
     for filename in os.listdir(predicted_probs_dir):
         if filename.startswith("seed"):
-            prediction_path = os.path.join(predicted_probs_dir, f"{filename}/predicted_probas.txt")
+            prediction_path = os.path.join(predicted_probs_dir, f"{filename}/{probas_fname}")
             prediction_df = pd.read_csv(prediction_path, sep="\t", encoding="utf-8", header=None, names=["proba"])
             prediction_df[f'p_{i}'] = prediction_df["proba"].apply(lambda x: 1 if x > decision_threshold else 0)
             predicted_labels_df = prediction_df[f'p_{i}']
@@ -41,7 +43,7 @@ def main():
     all_predictions['sum'] = (all_predictions >= 0.5).sum(axis=1)
     all_predictions['final_label'] = all_predictions['sum'].apply(lambda x: 1 if x >= len(columns) / 2 else 0)
 
-    data_df = pd.read_csv(data_tsv_path, sep="\t", encoding="utf-8",)
+    data_df = pd.read_csv(data_tsv_path, sep="\t", encoding="utf-8", )
     if calculate_metrics:
         true_labels_df = data_df["class"]
         print(classification_report(true_labels_df, all_predictions['final_label']))
