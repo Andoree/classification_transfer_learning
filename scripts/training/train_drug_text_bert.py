@@ -428,7 +428,7 @@ class CrossModalityBertClassifier(nn.Module):
                                        return_dict=True)['last_hidden_state']
         # molecule_cls_embeddings = torch.stack([elem[0, :] for elem in molecule_last_hidden_states])
         cross_attention_output = self.cross_attention_layer(input_tensor=text_last_hidden_states,
-                                                            ctx_tensor=molecule_last_hidden_states,)
+                                                            ctx_tensor=molecule_last_hidden_states, )
         cross_att_output_cls_embs = torch.stack([elem[0, :] for elem in cross_attention_output])
         proba = self.classifier(cross_att_output_cls_embs)
         return proba
@@ -533,6 +533,11 @@ def main():
         del chemberta_model
     else:
         raise ValueError(f"Invalid drug embeddings source: {drug_embeddings_from}")
+    print(
+        f"Datasets sizes: mono_train {train_df.shape[0]}, "
+        f"bi_train: {bilingual_train_df.shape[0]}, "
+        f"dev: {dev_df.shape[0]}, "
+        f"test: {test_df.shape[0]}")
 
     text_tokenizer = AutoTokenizer.from_pretrained("cimm-kzn/enrudr-bert", cache_dir="models/")
 
