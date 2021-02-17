@@ -30,7 +30,8 @@ class TweetsDataset(Dataset):
                                                             return_tensors="pt", ) for x in tweets_df.tweet.values]
         self.tokenized_molecules = None
         if molecule_tokenizer is not None:
-            smiles_list = [x if not x is np.nan else "" for x in tweets_df.smiles.values]
+            # TODO: Фикс: брать только первую из молекул
+            smiles_list = get_first_smile(tweets_df.smiles.values)
             self.tokenized_molecules = [molecule_tokenizer.encode_plus(x, max_length=self.molecule_max_length,
                                                                        padding="max_length", truncation=True,
                                                                        return_tensors="pt", ) for x in
@@ -112,6 +113,16 @@ def train(model, iterator, optimizer, criterion, use_drug_embeddings=True, cross
         history.append(loss.cpu().data.numpy())
 
     return epoch_loss / (i + 1)
+
+
+def get_first_smile(smiles_list, molecules_sep='~~~'):
+    preprocessed_smiles = []
+    for smile_str in smiles_list:
+        if smile_str is np.nan:
+            preprocessed_smiles.append("")
+        else:
+            preprocessed_smiles.append(smile_str.split(molecules_sep)[0])
+    return preprocessed_smiles
 
 
 def encode_smiles(model, tokenizer, smiles_list, max_length, molecules_sep='~~~'):
@@ -674,7 +685,7 @@ def main():
                                                           bert_molecule_encoder=chemberta_model,
                                                           classifier_dropout=dropout_p,
                                                           cross_att_attention_dropout=cross_att_attention_dropout,
-                                                          cross_att_hidden_dropout=cross_att_hidden_dropout)
+                                                          cross_att_hidden_dropout=cross_att_hidden_dropout).to(device)
         if use_weighted_loss:
             pos_weight = [get_positive_class_loss_weight(train_df, ), ]
             print("pos_weight", pos_weight)
