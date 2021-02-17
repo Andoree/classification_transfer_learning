@@ -8,14 +8,13 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.optim as optim
+from attention import BertCrossattLayer
 from sklearn.metrics import precision_score, f1_score, recall_score
 from torch import nn
 from torch.utils.data import Dataset
 from tqdm import tqdm
 from transformers import AutoModel, RobertaModel
 from transformers import AutoTokenizer
-
-from attention import BertCrossattLayer
 
 device = "cuda" if torch.cuda.is_available else "cpu"
 
@@ -643,12 +642,32 @@ def main():
 
     elif model_type == "mono_attention" or model_type == "bi_attention":
         if model_type.startswith("bi"):
-            train_loader = bilingual_train_loader
+            train_df = bilingual_train_df
+        # TODO: REFACROTING, REMOVE CODE DUPLICATE
+        chemberta_tokenizer = AutoTokenizer.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/")
+        train_tweets_dataset = TweetsDataset(train_df, text_tokenizer, text_max_length=max_length,
+                                             molecule_tokenizer=chemberta_tokenizer)
+        dev_tweets_dataset = TweetsDataset(dev_df, text_tokenizer, text_max_length=max_length,
+                                           molecule_tokenizer=chemberta_tokenizer)
+        test_tweets_dataset = TweetsDataset(test_df, text_tokenizer, text_max_length=max_length,
+                                            molecule_tokenizer=chemberta_tokenizer)
+        train_loader = torch.utils.data.DataLoader(
+            train_tweets_dataset, batch_size=batch_size, num_workers=num_workers, sampler=russian_sampler,
+            shuffle=shuffle, drop_last=True,
+        )
+        dev_loader = torch.utils.data.DataLoader(
+            dev_tweets_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
+        )
+        test_loader = torch.utils.data.DataLoader(
+            test_tweets_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
+        )
+
+
         cross_att_attention_dropout = config.getfloat("CROSSATT_PARAM", "CROSSATT_DROPOUT")
         cross_att_hidden_dropout = config.getfloat("CROSSATT_PARAM", "CROSSATT_HIDDEN_DROPOUT")
         chemberta_model = RobertaModel.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/").to(
             device)
-        # chemberta_tokenizer = AutoTokenizer.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/")
+
         enrudr_model = AutoModel.from_pretrained("cimm-kzn/enrudr-bert", cache_dir="models/")
         use_drug_embeddings = False
         crossatt_classifier = CrossModalityBertClassifier(bert_text_encoder=enrudr_model,
