@@ -15,29 +15,41 @@ from tqdm import tqdm
 from transformers import AutoModel, RobertaModel
 from transformers import AutoTokenizer
 
+from scripts.training.attention import BertCrossattLayer
+
 device = "cuda" if torch.cuda.is_available else "cpu"
 
 
 class TweetsDataset(Dataset):
-    def __init__(self, tweets_df, text_tokenizer, molecule_tokenizer=None, molecule_max_length=256, text_max_length=128):
+    def __init__(self, tweets_df, text_tokenizer, molecule_tokenizer=None, molecule_max_length=256,
+                 text_max_length=128):
         self.labels = tweets_df["class"].astype(np.float32).values
         self.text_max_length = text_max_length
         self.molecule_max_length = molecule_max_length
         self.tokenized_tweets = [text_tokenizer.encode_plus(x, max_length=self.text_max_length,
                                                             padding="max_length", truncation=True,
                                                             return_tensors="pt", ) for x in tweets_df.tweet.values]
-        # TODO
+        self.tokenized_molecules = None
         if molecule_tokenizer is not None:
-            pass
+            self.tokenized_molecules = [molecule_tokenizer.encode_plus(x, max_length=self.text_max_length,
+                                                                       padding="max_length", truncation=True,
+                                                                       return_tensors="pt", ) for x in
+                                        tweets_df.smiles.values]
         self.drug_embeddings = tweets_df.drug_embedding.values
         self.smiles = tweets_df.smiles.values
 
     def __getitem__(self, idx):
-        return {
+        sample_dict = {
             "input_ids": self.tokenized_tweets[idx]["input_ids"][0],
             "attention_mask": self.tokenized_tweets[idx]["attention_mask"][0],
             "drug_embeddings": self.drug_embeddings[idx],
-            "labels": self.labels[idx]}
+            "labels": self.labels[idx]
+        }
+        if self.tokenized_molecules is not None:
+            sample_dict["molecule_input_ids"] = self.tokenized_molecules[idx]["input_ids"][0]
+            sample_dict["molecule_attention_mask"] = self.tokenized_molecules[idx]["attention_mask"][0]
+
+        return sample_dict
 
     def __len__(self):
         return len(self.labels)
@@ -67,7 +79,7 @@ def create_dataset_weights(dataset):
     return sample_weights
 
 
-def train(model, iterator, optimizer, criterion, use_drug_embeddings=True):
+def train(model, iterator, optimizer, criterion, use_drug_embeddings=True, cross_att_flag=False):
     model.train()
 
     epoch_loss = 0
@@ -79,15 +91,21 @@ def train(model, iterator, optimizer, criterion, use_drug_embeddings=True):
         input_ids = batch["input_ids"].to(device)
         attention_mask = batch["attention_mask"].to(device)
         labels = batch["labels"].to(device)
+        assert not (cross_att_flag and use_drug_embeddings)
         if use_drug_embeddings:
             drug_embeddings = batch["drug_embeddings"].to(device)
             output = model(inputs=input_ids, attention_mask=attention_mask, drug_embeddings=drug_embeddings).squeeze(1)
+        elif cross_att_flag:
+            molecule_input_ids = batch["molecule_input_ids"].to(device)
+            molecule_attention_mask = batch["molecule_attention_mask"].to(device)
+            output = model(text_inputs=input_ids, text_attention_mask=attention_mask,
+                           molecule_inputs=molecule_input_ids,
+                           molecule_attention_mask=molecule_attention_mask).squeeze(1)
         else:
             output = model(inputs=input_ids, attention_mask=attention_mask, ).squeeze(1)
         loss = criterion(output, labels)
         loss.backward()
         optimizer.step()
-        # scheduler.step()
 
         epoch_loss += loss.item()
 
@@ -119,7 +137,7 @@ def encode_smiles(model, tokenizer, smiles_list, max_length, molecules_sep='~~~'
     return molecules_embeddings
 
 
-def evaluate(model, iterator, criterion, use_drug_embeddings):
+def evaluate(model, iterator, criterion, use_drug_embeddings, cross_att_flag=False):
     model.eval()
 
     epoch_loss = 0
@@ -138,10 +156,17 @@ def evaluate(model, iterator, criterion, use_drug_embeddings):
             true_labels.extend(labels.cpu().numpy())
             labels = labels.to(device)
 
+            assert not (cross_att_flag and use_drug_embeddings)
             if use_drug_embeddings:
                 drug_embeddings = batch["drug_embeddings"].to(device)
                 output = model(inputs=input_ids, attention_mask=attention_mask,
                                drug_embeddings=drug_embeddings).squeeze(1)
+            elif cross_att_flag:
+                molecule_input_ids = batch["molecule_input_ids"].to(device)
+                molecule_attention_mask = batch["molecule_attention_mask"].to(device)
+                output = model(text_inputs=input_ids, text_attention_mask=attention_mask,
+                               molecule_inputs=molecule_input_ids,
+                               molecule_attention_mask=molecule_attention_mask).squeeze(1)
             else:
                 output = model(inputs=input_ids, attention_mask=attention_mask, ).squeeze(1)
             pred_probas = output.cpu().numpy()
@@ -164,7 +189,7 @@ def epoch_time(start_time, end_time):
 
 
 def train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criterion, n_epochs, use_drug_embeddings,
-                   save_checkpoint_path, output_evaluation_path):
+                   save_checkpoint_path, output_evaluation_path, cross_att_flag=False):
     train_history = []
     valid_history = []
     valid_history_f1 = []
@@ -175,13 +200,16 @@ def train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criteri
 
     eval_dir = os.path.dirname(output_evaluation_path)
     train_statistics_path = os.path.join(eval_dir, "training_logs.txt")
+    # todo: cross_att_flag
 
     for epoch in tqdm(range(n_epochs)):
 
         start_time = time.time()
 
-        train_loss = train(bert_classifier, train_loader, optimizer, criterion, use_drug_embeddings)
-        valid_loss, valid_f1_score = evaluate(bert_classifier, dev_loader, criterion, use_drug_embeddings)
+        train_loss = train(bert_classifier, train_loader, optimizer, criterion, use_drug_embeddings,
+                           cross_att_flag=cross_att_flag)
+        valid_loss, valid_f1_score = evaluate(bert_classifier, dev_loader, criterion, use_drug_embeddings,
+                                              cross_att_flag=cross_att_flag)
 
         end_time = time.time()
 
@@ -208,40 +236,54 @@ def train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criteri
     return best_epoch
 
 
+def save_labels_probas(labels_path, probas_path, labels, probas):
+    with codecs.open(labels_path, 'w+', encoding="utf-8") as labels_file, \
+            codecs.open(probas_path, 'w+', encoding="utf-8") as probas_file:
+        for label, probability in zip(labels, probas):
+            labels_file.write(f"{label}\n")
+            probas_file.write(f"{probability}\n")
+
+
 def train_evaluate_model(seed, bert_classifier, use_drug_embeddings, criterion, learning_rate, train_loader, dev_loader,
-                         test_loader, num_epochs, output_evaluation_path, output_model_dir, model_chkpnt_name):
+                         test_loader, num_epochs, output_evaluation_path, output_model_dir, model_chkpnt_name,
+                         cross_att_flag=False):
     torch.manual_seed(seed)
     optimizer = optim.Adam(bert_classifier.parameters(), lr=learning_rate)
     # criterion = nn.BCEWithLogitsLoss()
 
     output_ckpt_path = os.path.join(output_model_dir, f"best-val-{model_chkpnt_name}.pt")
-    predicted_labels_path = os.path.join(output_model_dir, "predicted_labels.txt")
-    predicted_probas_path = os.path.join(output_model_dir, "predicted_probas.txt")
     best_epoch = train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criterion, num_epochs,
                                 use_drug_embeddings,
-                                output_ckpt_path, output_evaluation_path)
+                                output_ckpt_path, output_evaluation_path, cross_att_flag=cross_att_flag)
 
     bert_classifier.load_state_dict(torch.load(output_ckpt_path))
 
-    true_labels, pred_labels, pred_probas = predict(bert_classifier, dev_loader, use_drug_embeddings)
+    true_labels, pred_labels, pred_probas = predict(bert_classifier, train_loader, use_drug_embeddings,
+                                                    cross_att_flag=cross_att_flag)
+    save_labels_probas(labels_path=os.path.join(output_model_dir, "pred_train_labels.txt"),
+                       probas_path=os.path.join(output_model_dir, "pred_train_probas.txt"), labels=pred_labels,
+                       probas=pred_probas)
+    true_labels, pred_labels, pred_probas = predict(bert_classifier, dev_loader, use_drug_embeddings,
+                                                    cross_att_flag=cross_att_flag)
     assert len(pred_labels) == len(pred_probas)
     assert len(true_labels) == len(pred_labels)
     val_model_precision = precision_score(true_labels, pred_labels)
     val_model_recall = recall_score(true_labels, pred_labels)
     val_model_f1 = f1_score(true_labels, pred_labels)
+    save_labels_probas(labels_path=os.path.join(output_model_dir, "pred_dev_labels.txt"),
+                       probas_path=os.path.join(output_model_dir, "pred_dev_probas.txt"), labels=pred_labels,
+                       probas=pred_probas)
 
-    true_labels, pred_labels, pred_probas = predict(bert_classifier, test_loader, use_drug_embeddings)
+    true_labels, pred_labels, pred_probas = predict(bert_classifier, test_loader, use_drug_embeddings,
+                                                    cross_att_flag=cross_att_flag)
     assert len(pred_labels) == len(pred_probas)
     assert len(true_labels) == len(pred_labels)
     test_model_precision = precision_score(true_labels, pred_labels)
     test_model_recall = recall_score(true_labels, pred_labels)
     test_model_f1 = f1_score(true_labels, pred_labels)
-
-    with codecs.open(predicted_labels_path, 'w+', encoding="utf-8") as labels_file, \
-            codecs.open(predicted_probas_path, 'w+', encoding="utf-8") as probas_file:
-        for label, probability in zip(pred_labels, pred_probas):
-            labels_file.write(f"{label}\n")
-            probas_file.write(f"{probability}\n")
+    save_labels_probas(labels_path=os.path.join(output_model_dir, "pred_test_labels.txt"),
+                       probas_path=os.path.join(output_model_dir, "pred_test_probas.txt"), labels=pred_labels,
+                       probas=pred_probas)
 
     with codecs.open(output_evaluation_path, 'a+', encoding="utf-8") as output_file:
         output_file.write(f"{model_chkpnt_name},{best_epoch},{val_model_precision},{val_model_recall},{val_model_f1}\n")
@@ -252,7 +294,7 @@ def train_evaluate_model(seed, bert_classifier, use_drug_embeddings, criterion, 
     del criterion
 
 
-def predict(model, data_loader, use_drug_embeddings, decision_threshold=0.5):
+def predict(model, data_loader, use_drug_embeddings, cross_att_flag=False, decision_threshold=0.5):
     true_labels = []
     pred_labels = []
     pred_probas = []
@@ -264,10 +306,17 @@ def predict(model, data_loader, use_drug_embeddings, decision_threshold=0.5):
             attention_mask = batch["attention_mask"].to(device)
             batch_true_labels = batch["labels"].cpu().numpy()
 
+            assert not (cross_att_flag and use_drug_embeddings)
             if use_drug_embeddings:
                 drug_embeddings = batch["drug_embeddings"].to(device)
                 batch_pred_probas = model(inputs=input_ids, attention_mask=attention_mask,
                                           drug_embeddings=drug_embeddings).squeeze(1)
+            elif cross_att_flag:
+                molecule_input_ids = batch["molecule_input_ids"].to(device)
+                molecule_attention_mask = batch["molecule_attention_mask"].to(device)
+                batch_pred_probas = model(text_inputs=input_ids, text_attention_mask=attention_mask,
+                                          molecule_inputs=molecule_input_ids,
+                                          molecule_attention_mask=molecule_attention_mask).squeeze(1)
             else:
                 batch_pred_probas = model(inputs=input_ids, attention_mask=attention_mask, ).squeeze(1)
 
@@ -286,20 +335,13 @@ class BertSimpleClassifier(nn.Module):
         super().__init__()
 
         self.bert_text_encoder = bert_text_encoder
-        # self.dropout = nn.Dropout(dropout)
         bert_hidden_dim = bert_text_encoder.config.hidden_size
         self.emb_dropout = nn.Dropout(p=dropout)
         self.classifier = nn.Sequential(
-            # nn.Tanh(),
             nn.GELU(),
             nn.Linear(bert_hidden_dim, bert_hidden_dim),
             nn.Dropout(p=dropout),
             nn.GELU(),
-            # nn.ReLU(),
-            # nn.Dropout(dropout),
-            # nn.Tanh(),
-            # nn.BatchNorm1d(100),
-            # nn.Dropout(dropout),
             nn.Linear(bert_hidden_dim, 1),
         )
 
@@ -344,6 +386,40 @@ class BertClassifierWithDrugEmbeddings(nn.Module):
         # concat_text_drug_embeddings = self.dropout(concat_text_drug_embeddings)
 
         proba = self.classifier(concat_text_drug_embeddings)
+        return proba
+
+
+class CrossModalityBertClassifier(nn.Module):
+    def __init__(self, bert_text_encoder, bert_molecule_encoder, classifier_dropout, cross_att_attention_dropout,
+                 cross_att_hidden_dropout):
+        super().__init__()
+
+        self.bert_text_encoder = bert_text_encoder
+        self.bert_molecule_encoder = bert_molecule_encoder
+        bert_hidden_dim = bert_text_encoder.config.hidden_size
+        self.cross_attention_layer = BertCrossattLayer(bert_hidden_dim, cross_att_attention_dropout,
+                                                       cross_att_hidden_dropout)
+        self.classifier = nn.Sequential(
+            nn.GELU(),
+            nn.Linear(bert_hidden_dim, bert_hidden_dim),
+            nn.Dropout(p=classifier_dropout),
+            nn.GELU(),
+            nn.Linear(bert_hidden_dim, 1),
+        )
+
+    def forward(self, text_inputs, text_attention_mask, molecule_inputs, molecule_attention_mask, ):
+        text_last_hidden_states = self.bert_text_encoder(text_inputs, attention_mask=text_attention_mask,
+                                                         return_dict=True)['last_hidden_state']
+        text_cls_embeddings = torch.stack([elem[0, :] for elem in text_last_hidden_states])
+        molecule_last_hidden_states = \
+            self.bert_molecule_encoder(molecule_inputs, attention_mask=molecule_attention_mask,
+                                       return_dict=True)['last_hidden_state']
+        molecule_cls_embeddings = torch.stack([elem[0, :] for elem in molecule_last_hidden_states])
+        cross_attention_output = self.cross_attention_layer(input_tensor=text_cls_embeddings,
+                                                            ctx_tensor=molecule_cls_embeddings,
+                                                            ctx_att_mask=molecule_attention_mask)
+
+        proba = self.classifier(cross_attention_output)
         return proba
 
 
@@ -564,6 +640,37 @@ def main():
                              test_loader, num_epochs, output_evaluation_path, output_dir, "ruen-drug")
         del bert_clf_with_drug_embeddings
         del enrudr_model
+
+    elif model_type == "mono_attention" or model_type == "bi_attention":
+        if model_type.startswith("bi"):
+            train_loader = bilingual_train_loader
+        cross_att_attention_dropout = config.getfloat("CROSSATT_PARAM", "CROSSATT_DROPOUT")
+        cross_att_hidden_dropout = config.getfloat("CROSSATT_PARAM", "CROSSATT_HIDDEN_DROPOUT")
+        chemberta_model = RobertaModel.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/").to(
+            device)
+        # chemberta_tokenizer = AutoTokenizer.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/")
+        enrudr_model = AutoModel.from_pretrained("cimm-kzn/enrudr-bert", cache_dir="models/")
+        use_drug_embeddings = False
+        crossatt_classifier = CrossModalityBertClassifier(bert_text_encoder=enrudr_model,
+                                                          bert_molecule_encoder=chemberta_model,
+                                                          classifier_dropout=dropout_p,
+                                                          cross_att_attention_dropout=cross_att_attention_dropout,
+                                                          cross_att_hidden_dropout=cross_att_hidden_dropout)
+        if use_weighted_loss:
+            pos_weight = [get_positive_class_loss_weight(train_df, ), ]
+            print("pos_weight", pos_weight)
+            pos_weight = torch.FloatTensor(pos_weight).to(device)
+            criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(device)
+        else:
+            criterion = nn.BCEWithLogitsLoss().to(device)
+        train_evaluate_model(seed, crossatt_classifier, use_drug_embeddings, criterion, learning_rate,
+                             train_loader,
+                             dev_loader,
+                             test_loader, num_epochs, output_evaluation_path, output_dir, model_type,
+                             cross_att_flag=True)
+        del crossatt_classifier
+        del enrudr_model
+        del chemberta_model
 
 
 if __name__ == '__main__':
