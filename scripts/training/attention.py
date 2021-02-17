@@ -40,6 +40,8 @@ class BertAttention(nn.Module):
         attention_scores = attention_scores / math.sqrt(self.attention_head_size)
         # Apply the attention mask is (precomputed for all layers in BertModel forward() function)
         if attention_mask is not None:
+            print("attention scores", attention_scores.size())
+            print("attention mask", attention_mask.size())
             attention_scores = attention_scores + attention_mask
 
         # Normalize the attention scores to probabilities.
