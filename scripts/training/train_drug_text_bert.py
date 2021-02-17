@@ -15,7 +15,7 @@ from tqdm import tqdm
 from transformers import AutoModel, RobertaModel
 from transformers import AutoTokenizer
 
-from scripts.training.attention import BertCrossattLayer
+from attention import BertCrossattLayer
 
 device = "cuda" if torch.cuda.is_available else "cpu"
 
