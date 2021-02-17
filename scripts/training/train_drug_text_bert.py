@@ -421,13 +421,13 @@ class CrossModalityBertClassifier(nn.Module):
     def forward(self, text_inputs, text_attention_mask, molecule_inputs, molecule_attention_mask, ):
         text_last_hidden_states = self.bert_text_encoder(text_inputs, attention_mask=text_attention_mask,
                                                          return_dict=True)['last_hidden_state']
-        text_cls_embeddings = torch.stack([elem[0, :] for elem in text_last_hidden_states])
+        # text_cls_embeddings = torch.stack([elem[0, :] for elem in text_last_hidden_states])
         molecule_last_hidden_states = \
             self.bert_molecule_encoder(molecule_inputs, attention_mask=molecule_attention_mask,
                                        return_dict=True)['last_hidden_state']
-        molecule_cls_embeddings = torch.stack([elem[0, :] for elem in molecule_last_hidden_states])
-        cross_attention_output = self.cross_attention_layer(input_tensor=text_cls_embeddings,
-                                                            ctx_tensor=molecule_cls_embeddings,
+        # molecule_cls_embeddings = torch.stack([elem[0, :] for elem in molecule_last_hidden_states])
+        cross_attention_output = self.cross_attention_layer(input_tensor=text_last_hidden_states,
+                                                            ctx_tensor=molecule_last_hidden_states,
                                                             ctx_att_mask=molecule_attention_mask)
 
         proba = self.classifier(cross_attention_output)
