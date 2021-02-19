@@ -588,7 +588,7 @@ def main():
         bert_classifier = BertClassifierWithDrugEmbeddings(bert_text_encoder,
                                                            drug_enc_hid_dim=drug_enc_hid_dim,
                                                            dropout=dropout_p).to(device)
-        checkpoint_name = f"{train_type}_drug_{text_encoder_name.split('/')[-1])}"
+        checkpoint_name = f"{train_type}_drug_{text_encoder_name.split('/')[-1]}"
     elif model_type == "attention":
         cross_att_attention_dropout = config.getfloat("CROSSATT_PARAM", "CROSSATT_DROPOUT")
         cross_att_hidden_dropout = config.getfloat("CROSSATT_PARAM", "CROSSATT_HIDDEN_DROPOUT")
