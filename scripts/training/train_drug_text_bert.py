@@ -456,9 +456,9 @@ def get_positive_class_loss_weight(data_df, class_column="class"):
 def main():
     config = configparser.ConfigParser()
     config.read("train_config.ini")
-
-    data_dir = config["INPUT"]["INPUT_DIR"]
-    bilingual_data_dir = config["INPUT"]["BILINGUAL_INPUT_DIR"]
+    train_type = config["INPUT"]["TRAIN_TYPE"]
+    # data_dir = config["INPUT"]["INPUT_DIR"]
+    # bilingual_data_dir = config["INPUT"]["BILINGUAL_INPUT_DIR"]
     drug_embeddings_from = config["INPUT"]["DRUG_EMBEDDINGS_FROM"]
     seed = config.getint("PARAMETERS", "SEED")
     max_length = config.getint("PARAMETERS", "MAX_TEXT_LENGTH")
@@ -467,6 +467,7 @@ def main():
     learning_rate = config.getfloat("PARAMETERS", "LEARNING_RATE")
     dropout_p = config.getfloat("PARAMETERS", "DROPOUT")
     num_epochs = config.getint("PARAMETERS", "NUM_EPOCHS")
+    text_encoder_name = config.get("PARAMETERS", "TEXT_ENCODER_NAME")
     apply_upsampling = config.getboolean("PARAMETERS", "APPLY_UPSAMPLING")
     use_weighted_loss = config.getboolean("PARAMETERS", "USE_WEIGHTED_LOSS")
     model_type = config["PARAMETERS"]["MODEL_TYPE"]
@@ -486,24 +487,23 @@ def main():
     torch.cuda.random.manual_seed(seed)
     torch.cuda.random.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
-
+    if train_type == "mono":
+        data_dir = config["INPUT"]["INPUT_DIR"]
+    elif train_type == "bi":
+        data_dir = config["INPUT"]["BILINGUAL_INPUT_DIR"]
+    else:
+        raise ValueError(f"Invalid dataset type: {train_type}")
     if drug_embeddings_from == "file":
         train_path = os.path.join(data_dir, "train.csv")
         test_path = os.path.join(data_dir, "test.csv")
         dev_path = os.path.join(data_dir, "dev.csv")
-        bilingual_train_path = os.path.join(bilingual_data_dir, "bilingual_train.csv")
         train_df = pd.read_csv(train_path, )
         dev_df = pd.read_csv(dev_path, )
         test_df = pd.read_csv(test_path, )
-        bilingual_train_df = pd.read_csv(bilingual_train_path, )
         train_df["drug_embedding"] = train_df["drug_embedding"].apply(lambda x: embedding_str_to_numpy(x))
         dev_df["drug_embedding"] = dev_df["drug_embedding"].apply(lambda x: embedding_str_to_numpy(x))
         test_df["drug_embedding"] = test_df["drug_embedding"].apply(lambda x: embedding_str_to_numpy(x))
-        bilingual_train_df["drug_embedding"] = bilingual_train_df["drug_embedding"].apply(
-            lambda x: embedding_str_to_numpy(x))
-
-        bilingual_train_df["drug_embedding"] = bilingual_train_df["drug_embedding"].apply(
-            lambda x: torch.FloatTensor(x))
+        drug_enc_hid_dim = len(train_df["drug_embedding"].values[0])
         train_df["drug_embedding"] = train_df["drug_embedding"].apply(lambda x: torch.FloatTensor(x))
         test_df["drug_embedding"] = test_df["drug_embedding"].apply(lambda x: torch.FloatTensor(x))
         dev_df["drug_embedding"] = dev_df["drug_embedding"].apply(lambda x: torch.FloatTensor(x))
@@ -511,17 +511,13 @@ def main():
         train_path = os.path.join(data_dir, "train.tsv")
         test_path = os.path.join(data_dir, "test.tsv")
         dev_path = os.path.join(data_dir, "dev.tsv")
-        bilingual_train_path = os.path.join(bilingual_data_dir, "train.tsv")
         train_df = pd.read_csv(train_path, sep='\t', quoting=3)
         dev_df = pd.read_csv(dev_path, sep='\t', quoting=3)
         test_df = pd.read_csv(test_path, sep='\t', quoting=3)
-        bilingual_train_df = pd.read_csv(bilingual_train_path, sep='\t', quoting=3)
         chemberta_model = RobertaModel.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/").to(
             device)
         tokenizer = AutoTokenizer.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/")
-        bilingual_train_df["drug_embedding"] = encode_smiles(model=chemberta_model, tokenizer=tokenizer,
-                                                             smiles_list=bilingual_train_df.smiles.values,
-                                                             max_length=max_chemberta_length, )
+        drug_enc_hid_dim = chemberta_model.config.hidden_size
         train_df["drug_embedding"] = encode_smiles(model=chemberta_model, tokenizer=tokenizer,
                                                    smiles_list=train_df.smiles.values,
                                                    max_length=max_chemberta_length, )
@@ -534,32 +530,31 @@ def main():
     else:
         raise ValueError(f"Invalid drug embeddings source: {drug_embeddings_from}")
     print(
-        f"Datasets sizes: mono_train {train_df.shape[0]}, "
-        f"bi_train: {bilingual_train_df.shape[0]}, "
-        f"dev: {dev_df.shape[0]}, "
+        f"Datasets sizes: mono_train {train_df.shape[0]},\n"
+        f"dev: {dev_df.shape[0]},\n"
         f"test: {test_df.shape[0]}")
 
-    text_tokenizer = AutoTokenizer.from_pretrained("cimm-kzn/enrudr-bert", cache_dir="models/")
+    bert_text_encoder = AutoModel.from_pretrained(text_encoder_name, cache_dir="models/")
+    text_tokenizer = AutoTokenizer.from_pretrained(text_encoder_name, cache_dir="models/")
+    if model_type == "attention":
+        chemberta_tokenizer = AutoTokenizer.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/")
+    else:
+        chemberta_tokenizer = None
+    train_tweets_dataset = TweetsDataset(train_df, text_tokenizer, text_max_length=max_length,
+                                         molecule_tokenizer=chemberta_tokenizer)
+    dev_tweets_dataset = TweetsDataset(dev_df, text_tokenizer, text_max_length=max_length,
+                                       molecule_tokenizer=chemberta_tokenizer)
+    test_tweets_dataset = TweetsDataset(test_df, text_tokenizer, text_max_length=max_length,
+                                        molecule_tokenizer=chemberta_tokenizer)
 
-    train_tweets_dataset = TweetsDataset(train_df, text_tokenizer, text_max_length=max_length, )
-    dev_tweets_dataset = TweetsDataset(dev_df, text_tokenizer, text_max_length=max_length)
-    test_tweets_dataset = TweetsDataset(test_df, text_tokenizer, text_max_length=max_length)
-    bilingual_train_tweets_dataset = TweetsDataset(bilingual_train_df, text_tokenizer, text_max_length=max_length)
-
-    russian_train_weights = create_dataset_weights(train_tweets_dataset)
-    russian_train_weights = torch.DoubleTensor(russian_train_weights)
-    bilingual_train_weights = create_dataset_weights(bilingual_train_tweets_dataset)
-    bilingual_train_weights = torch.DoubleTensor(bilingual_train_weights)
+    train_weights = create_dataset_weights(train_tweets_dataset)
+    train_weights = torch.DoubleTensor(train_weights)
 
     if apply_upsampling:
-        russian_sampler = torch.utils.data.sampler.WeightedRandomSampler(russian_train_weights,
-                                                                         len(russian_train_weights))
-        bilingual_sampler = torch.utils.data.sampler.WeightedRandomSampler(bilingual_train_weights,
-                                                                           len(bilingual_train_weights))
+        russian_sampler = torch.utils.data.sampler.WeightedRandomSampler(train_weights, len(train_weights))
         shuffle = False
     else:
         russian_sampler = None
-        bilingual_sampler = None
         shuffle = True
 
     num_workers = 4
@@ -574,138 +569,45 @@ def main():
     test_loader = torch.utils.data.DataLoader(
         test_tweets_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
     )
-    bilingual_train_loader = torch.utils.data.DataLoader(
-        bilingual_train_tweets_dataset, batch_size=batch_size, num_workers=num_workers, sampler=bilingual_sampler,
-        shuffle=shuffle, drop_last=True,
-    )
-    # dropout_p = 0.2
-    if model_type == "ru_nodrug":
+    use_drug_embeddings = False
+    if use_weighted_loss:
+        pos_weight = [get_positive_class_loss_weight(train_df, ), ]
+        print("pos_weight", pos_weight)
+        pos_weight = torch.FloatTensor(pos_weight).to(device)
+        criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(device)
+    else:
+        criterion = nn.BCEWithLogitsLoss().to(device)
+    if model_type == "nodrug":
         torch.manual_seed(seed)
-        enrudr_model = AutoModel.from_pretrained("cimm-kzn/enrudr-bert", cache_dir="models/")
         use_drug_embeddings = False
-        bert_simple_clf = BertSimpleClassifier(enrudr_model, dropout=dropout_p).to(device)
-        if use_weighted_loss:
-            pos_weight = [get_positive_class_loss_weight(train_df, ), ]
-            print("pos_weight", pos_weight)
-            pos_weight = torch.FloatTensor(pos_weight).to(device)
-            criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(device)
-        else:
-            criterion = nn.BCEWithLogitsLoss().to(device)
-        train_evaluate_model(seed, bert_simple_clf, use_drug_embeddings, criterion, learning_rate, train_loader,
-                             dev_loader,
-                             test_loader, num_epochs, output_evaluation_path, output_dir, "ru-simple")
-        del bert_simple_clf
-        del enrudr_model
-    elif model_type == "ru_drug":
+        bert_classifier = BertSimpleClassifier(bert_text_encoder, dropout=dropout_p).to(device)
+        checkpoint_name = f"{train_type}_simple_{text_encoder_name}"
+    elif model_type == "drug":
         torch.manual_seed(seed)
-        enrudr_model = AutoModel.from_pretrained("cimm-kzn/enrudr-bert", cache_dir="models/")
-        drug_enc_hid_dim = 768
         use_drug_embeddings = True
-        bert_clf_with_drug_embeddings = BertClassifierWithDrugEmbeddings(enrudr_model,
-                                                                         drug_enc_hid_dim=drug_enc_hid_dim,
-                                                                         dropout=dropout_p).to(device)
-        if use_weighted_loss:
-            pos_weight = [get_positive_class_loss_weight(train_df, ), ]
-            print("pos_weight", pos_weight)
-            pos_weight = torch.FloatTensor(pos_weight).to(device)
-            criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(device)
-        else:
-            criterion = nn.BCEWithLogitsLoss().to(device)
-        train_evaluate_model(seed, bert_clf_with_drug_embeddings, use_drug_embeddings, criterion, learning_rate,
-                             train_loader,
-                             dev_loader,
-                             test_loader, num_epochs, output_evaluation_path, output_dir, "ru-with-drugs")
-        del bert_clf_with_drug_embeddings
-        del enrudr_model
-    elif model_type == "ruen_nodrug":
-        torch.manual_seed(seed)
-        enrudr_model = AutoModel.from_pretrained("cimm-kzn/enrudr-bert", cache_dir="models/")
-        use_drug_embeddings = False
-        bert_simple_clf = BertSimpleClassifier(enrudr_model, dropout=dropout_p).to(device)
-        if use_weighted_loss:
-            pos_weight = [get_positive_class_loss_weight(bilingual_train_df, ), ]
-            print("pos_weight", pos_weight)
-            pos_weight = torch.FloatTensor(pos_weight).to(device)
-            criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(device)
-        else:
-            criterion = nn.BCEWithLogitsLoss().to(device)
-        train_evaluate_model(seed, bert_simple_clf, use_drug_embeddings, criterion, learning_rate,
-                             bilingual_train_loader,
-                             dev_loader,
-                             test_loader, num_epochs, output_evaluation_path, output_dir, "ruen-simple")
-        del bert_simple_clf
-        del enrudr_model
-    elif model_type == "ruen_drug":
-        torch.manual_seed(seed)
-        enrudr_model = AutoModel.from_pretrained("cimm-kzn/enrudr-bert", cache_dir="models/")
-        drug_enc_hid_dim = enrudr_model.config.hidden_size
-        use_drug_embeddings = True
-        bert_clf_with_drug_embeddings = BertClassifierWithDrugEmbeddings(enrudr_model,
-                                                                         drug_enc_hid_dim=drug_enc_hid_dim,
-                                                                         dropout=dropout_p).to(device)
-        if use_weighted_loss:
-            pos_weight = [get_positive_class_loss_weight(bilingual_train_df, ), ]
-            print("pos_weight", pos_weight)
-            pos_weight = torch.FloatTensor(pos_weight).to(device)
-            criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(device)
-        else:
-            criterion = nn.BCEWithLogitsLoss().to(device)
-        train_evaluate_model(seed, bert_clf_with_drug_embeddings, use_drug_embeddings, criterion, learning_rate,
-                             bilingual_train_loader,
-                             dev_loader,
-                             test_loader, num_epochs, output_evaluation_path, output_dir, "ruen-drug")
-        del bert_clf_with_drug_embeddings
-        del enrudr_model
-
-    elif model_type == "mono_attention" or model_type == "bi_attention":
-        if model_type.startswith("bi"):
-            train_df = bilingual_train_df
-        # TODO: REFACROTING, REMOVE CODE DUPLICATE
-        chemberta_tokenizer = AutoTokenizer.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/")
-        train_tweets_dataset = TweetsDataset(train_df, text_tokenizer, text_max_length=max_length,
-                                             molecule_tokenizer=chemberta_tokenizer)
-        dev_tweets_dataset = TweetsDataset(dev_df, text_tokenizer, text_max_length=max_length,
-                                           molecule_tokenizer=chemberta_tokenizer)
-        test_tweets_dataset = TweetsDataset(test_df, text_tokenizer, text_max_length=max_length,
-                                            molecule_tokenizer=chemberta_tokenizer)
-        train_loader = torch.utils.data.DataLoader(
-            train_tweets_dataset, batch_size=batch_size, num_workers=num_workers, sampler=russian_sampler,
-            shuffle=shuffle, drop_last=True,
-        )
-        dev_loader = torch.utils.data.DataLoader(
-            dev_tweets_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
-        )
-        test_loader = torch.utils.data.DataLoader(
-            test_tweets_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
-        )
-
+        bert_classifier = BertClassifierWithDrugEmbeddings(bert_text_encoder,
+                                                           drug_enc_hid_dim=drug_enc_hid_dim,
+                                                           dropout=dropout_p).to(device)
+        checkpoint_name = f"{train_type}_drug_{text_encoder_name}"
+    elif model_type == "attention":
         cross_att_attention_dropout = config.getfloat("CROSSATT_PARAM", "CROSSATT_DROPOUT")
         cross_att_hidden_dropout = config.getfloat("CROSSATT_PARAM", "CROSSATT_HIDDEN_DROPOUT")
         chemberta_model = RobertaModel.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/").to(
             device)
-
-        enrudr_model = AutoModel.from_pretrained("cimm-kzn/enrudr-bert", cache_dir="models/")
         use_drug_embeddings = False
-        crossatt_classifier = CrossModalityBertClassifier(bert_text_encoder=enrudr_model,
-                                                          bert_molecule_encoder=chemberta_model,
-                                                          classifier_dropout=dropout_p,
-                                                          cross_att_attention_dropout=cross_att_attention_dropout,
-                                                          cross_att_hidden_dropout=cross_att_hidden_dropout).to(device)
-        if use_weighted_loss:
-            pos_weight = [get_positive_class_loss_weight(train_df, ), ]
-            print("pos_weight", pos_weight)
-            pos_weight = torch.FloatTensor(pos_weight).to(device)
-            criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(device)
-        else:
-            criterion = nn.BCEWithLogitsLoss().to(device)
-        train_evaluate_model(seed, crossatt_classifier, use_drug_embeddings, criterion, learning_rate,
-                             train_loader,
-                             dev_loader,
-                             test_loader, num_epochs, output_evaluation_path, output_dir, model_type,
-                             cross_att_flag=True)
-        del crossatt_classifier
-        del enrudr_model
-        del chemberta_model
+        bert_classifier = CrossModalityBertClassifier(bert_text_encoder=bert_text_encoder,
+                                                      bert_molecule_encoder=chemberta_model,
+                                                      classifier_dropout=dropout_p,
+                                                      cross_att_attention_dropout=cross_att_attention_dropout,
+                                                      cross_att_hidden_dropout=cross_att_hidden_dropout).to(device)
+        checkpoint_name = f"{train_type}_attention_{text_encoder_name}"
+    else:
+        raise ValueError(f"Invalid model type: {model_type}")
+    train_evaluate_model(seed, bert_classifier, use_drug_embeddings, criterion, learning_rate, train_loader,
+                         dev_loader, test_loader, num_epochs, output_evaluation_path, output_dir, checkpoint_name)
+
+    del bert_classifier
+    del bert_text_encoder
 
 
 if __name__ == '__main__':
