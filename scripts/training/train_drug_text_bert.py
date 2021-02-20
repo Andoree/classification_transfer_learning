@@ -605,6 +605,7 @@ def main():
         test_tweets_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
     )
     use_drug_embeddings = False
+    cross_att_flag = False
     if use_weighted_loss:
         pos_weight = [get_positive_class_loss_weight(train_df, ), ]
         print("pos_weight", pos_weight)
@@ -630,6 +631,7 @@ def main():
         chemberta_model = RobertaModel.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/").to(
             device)
         use_drug_embeddings = False
+        cross_att_flag = True
         bert_classifier = CrossModalityBertClassifier(bert_text_encoder=bert_text_encoder,
                                                       bert_molecule_encoder=chemberta_model,
                                                       classifier_dropout=dropout_p,
@@ -639,7 +641,8 @@ def main():
     else:
         raise ValueError(f"Invalid model type: {model_type}")
     train_evaluate_model(seed, bert_classifier, use_drug_embeddings, criterion, learning_rate, train_loader,
-                         dev_loader, test_loader, num_epochs, output_evaluation_path, output_dir, checkpoint_name)
+                         dev_loader, test_loader, num_epochs, output_evaluation_path, output_dir, checkpoint_name,
+                         cross_att_flag=cross_att_flag)
 
     del bert_classifier
     del bert_text_encoder
