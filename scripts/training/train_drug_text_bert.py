@@ -13,7 +13,7 @@ from sklearn.metrics import precision_score, f1_score, recall_score
 from torch import nn
 from torch.utils.data import Dataset
 from tqdm import tqdm
-from transformers import AutoModel, RobertaModel
+from transformers import AutoModel, RobertaModel, RobertaTokenizer
 from transformers import AutoTokenizer
 
 device = "cuda" if torch.cuda.is_available else "cpu"
@@ -211,7 +211,6 @@ def train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criteri
 
     eval_dir = os.path.dirname(output_evaluation_path)
     train_statistics_path = os.path.join(eval_dir, "training_logs.txt")
-    # todo: cross_att_flag
 
     for epoch in tqdm(range(n_epochs)):
 
@@ -453,6 +452,30 @@ def get_positive_class_loss_weight(data_df, class_column="class"):
     return positive_class_weight
 
 
+def get_row_sider_embedding(row):
+    embedding = row.loc["0":"1319"].values
+    return embedding
+
+def get_sider_emb_by_drugbank_id(drugbank_ids, sider_embs, drugs_sep = '~'):
+    drugbank_ids_list = drugbank_ids.split(drugs_sep)
+    embs_list = []
+    for drug_id in drugbank_ids_list:
+        embedding = sider_embs[drug_id]
+        emb_size = len(embedding)
+        if np.isnan(embedding[0]):
+            continue
+        embs_list.append(embedding)
+    embs_list = np.array(embs_list)
+    if len(embs_list) == 0:
+        mean_emb = np.zeros(shape=(emb_size), dtype=np.float)
+    else:
+        mean_emb = np.mean(embs_list, axis=1)
+
+    return mean_emb
+
+
+
+
 def main():
     config = configparser.ConfigParser()
     config.read("train_config.ini")
@@ -494,19 +517,25 @@ def main():
     else:
         raise ValueError(f"Invalid dataset type: {train_type}")
     if drug_embeddings_from == "sider":
-        train_path = os.path.join(data_dir, "train.csv")
-        test_path = os.path.join(data_dir, "test.csv")
-        dev_path = os.path.join(data_dir, "dev.csv")
-        train_df = pd.read_csv(train_path, )
-        dev_df = pd.read_csv(dev_path, )
-        test_df = pd.read_csv(test_path, )
-        train_df["drug_embedding"] = train_df["drug_embedding"].apply(lambda x: embedding_str_to_numpy(x))
-        dev_df["drug_embedding"] = dev_df["drug_embedding"].apply(lambda x: embedding_str_to_numpy(x))
-        test_df["drug_embedding"] = test_df["drug_embedding"].apply(lambda x: embedding_str_to_numpy(x))
+        sider_path = config["SIDER"]["EMBS_PATH_GZ"]
+        train_path = os.path.join(data_dir, "train.tsv")
+        test_path = os.path.join(data_dir, "test.tsv")
+        dev_path = os.path.join(data_dir, "dev.tsv")
+        train_df = pd.read_csv(train_path, sep='\t', quoting=3)
+        dev_df = pd.read_csv(dev_path, sep='\t', quoting=3)
+        test_df = pd.read_csv(test_path, sep='\t', quoting=3)
+        sider_embs_df = pd.read_csv(sider_path, compression='gzip')
+        sider_embs_df.set_index("drugbank_id", inplace=True)
+        sider_embs_df["sider_drug_emb"] = sider_embs_df.apply(lambda row: get_row_sider_embedding(row), axis=1)
+        sider_embs_df = sider_embs_df["sider_drug_emb"]
+        train_df["drug_embedding"] = train_df["drug_id"].apply(lambda x:)
+        dev_df["drug_embedding"] = dev_df["drug_id"].apply(lambda x:)
+        test_df["drug_embedding"] = test_df["drug_id"].apply(lambda x:)
         drug_enc_hid_dim = len(train_df["drug_embedding"].values[0])
         train_df["drug_embedding"] = train_df["drug_embedding"].apply(lambda x: torch.FloatTensor(x))
         test_df["drug_embedding"] = test_df["drug_embedding"].apply(lambda x: torch.FloatTensor(x))
         dev_df["drug_embedding"] = dev_df["drug_embedding"].apply(lambda x: torch.FloatTensor(x))
+        del sider_embs_df
     elif drug_embeddings_from == "chemberta":
         train_path = os.path.join(data_dir, "train.tsv")
         test_path = os.path.join(data_dir, "test.tsv")
@@ -533,9 +562,12 @@ def main():
         f"Datasets sizes: mono_train {train_df.shape[0]},\n"
         f"dev: {dev_df.shape[0]},\n"
         f"test: {test_df.shape[0]}")
-
-    bert_text_encoder = AutoModel.from_pretrained(text_encoder_name, cache_dir="models/")
-    text_tokenizer = AutoTokenizer.from_pretrained(text_encoder_name, cache_dir="models/")
+    if model_type == "roberta-large":
+        text_tokenizer = RobertaTokenizer.from_pretrained('roberta-large', cache_dir="models/")
+        bert_text_encoder = RobertaModel.from_pretrained('roberta-large', cache_dir="models/")
+    else:
+        bert_text_encoder = AutoModel.from_pretrained(text_encoder_name, cache_dir="models/")
+        text_tokenizer = AutoTokenizer.from_pretrained(text_encoder_name, cache_dir="models/")
     if model_type == "attention":
         chemberta_tokenizer = AutoTokenizer.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/")
     else:
