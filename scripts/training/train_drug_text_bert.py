@@ -456,24 +456,25 @@ def get_row_sider_embedding(row):
     embedding = row.loc["0":"1319"].values
     return embedding
 
-def get_sider_emb_by_drugbank_id(drugbank_ids, sider_embs, drugs_sep = '~'):
+
+def get_sider_emb_by_drugbank_id(drugbank_ids, sider_embs, drugs_sep='~', emb_size=1320):
     drugbank_ids_list = drugbank_ids.split(drugs_sep)
     embs_list = []
+    if np.isnan(drugbank_ids):
+        mean_emb = np.zeros(shape=emb_size, dtype=np.float)
+        return mean_emb
     for drug_id in drugbank_ids_list:
         embedding = sider_embs[drug_id]
-        emb_size = len(embedding)
         if np.isnan(embedding[0]):
             continue
         embs_list.append(embedding)
     embs_list = np.array(embs_list)
     if len(embs_list) == 0:
-        mean_emb = np.zeros(shape=(emb_size), dtype=np.float)
+        mean_emb = np.zeros(shape=emb_size, dtype=np.float)
     else:
         mean_emb = np.mean(embs_list, axis=1)
 
     return mean_emb
-
-
 
 
 def main():
@@ -501,7 +502,7 @@ def main():
     output_evaluation_path = os.path.join(output_dir, output_evaluation_filename)
     if apply_upsampling and use_weighted_loss:
         raise AssertionError(f"You can use only either weighted loss or upsampling")
-
+    # TODO: Возможно, для роберты ломается аттеншн? Но пока дело не в этом
     torch.manual_seed(seed)
     torch.random.manual_seed(seed)
     os.environ['PYTHONHASHSEED'] = str(seed)
@@ -528,10 +529,16 @@ def main():
         sider_embs_df.set_index("drugbank_id", inplace=True)
         sider_embs_df["sider_drug_emb"] = sider_embs_df.apply(lambda row: get_row_sider_embedding(row), axis=1)
         sider_embs_df = sider_embs_df["sider_drug_emb"]
-        train_df["drug_embedding"] = train_df["drug_id"].apply(lambda x:)
-        dev_df["drug_embedding"] = dev_df["drug_id"].apply(lambda x:)
-        test_df["drug_embedding"] = test_df["drug_id"].apply(lambda x:)
-        drug_enc_hid_dim = len(train_df["drug_embedding"].values[0])
+        # TODO
+        # drug_enc_hid_dim = len(train_df["drug_embedding"].values[0])
+        drug_enc_hid_dim = 1320
+        train_df["drug_embedding"] = train_df["drug_id"].apply(
+            lambda x: get_sider_emb_by_drugbank_id(x, sider_embs=sider_embs_df, emb_size=1320))
+        dev_df["drug_embedding"] = dev_df["drug_id"].apply(
+            lambda x: get_sider_emb_by_drugbank_id(x, sider_embs=sider_embs_df, emb_size=1320))
+        test_df["drug_embedding"] = test_df["drug_id"].apply(
+            lambda x: get_sider_emb_by_drugbank_id(x, sider_embs=sider_embs_df, emb_size=1320))
+        # drug_enc_hid_dim = len(train_df["drug_embedding"].values[0])
         train_df["drug_embedding"] = train_df["drug_embedding"].apply(lambda x: torch.FloatTensor(x))
         test_df["drug_embedding"] = test_df["drug_embedding"].apply(lambda x: torch.FloatTensor(x))
         dev_df["drug_embedding"] = dev_df["drug_embedding"].apply(lambda x: torch.FloatTensor(x))
