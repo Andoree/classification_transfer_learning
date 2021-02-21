@@ -1,23 +1,25 @@
+import math
+
 import torch
 from torch import nn
 from torch.nn import LayerNorm as BertLayerNorm
-import math
 
 
 class BertAttention(nn.Module):
-    def __init__(self, hidden_size, attention_probs_dropout_prob, num_attention_heads=12,):
+    def __init__(self, text_hidden_size, molecule_hidden_size,
+                 attention_probs_dropout_prob, num_attention_heads=12, ):
         super().__init__()
-        if hidden_size % num_attention_heads != 0:
+        if text_hidden_size % num_attention_heads != 0:
             raise ValueError(
                 "The hidden size (%d) is not a multiple of the number of attention "
-                "heads (%d)" % (hidden_size, num_attention_heads))
+                "heads (%d)" % (text_hidden_size, num_attention_heads))
         self.num_attention_heads = num_attention_heads
-        self.attention_head_size = int(hidden_size / num_attention_heads)
+        self.attention_head_size = int(text_hidden_size / num_attention_heads)
         self.all_head_size = self.num_attention_heads * self.attention_head_size
 
-        self.query = nn.Linear(hidden_size, self.all_head_size)
-        self.key = nn.Linear(hidden_size, self.all_head_size)
-        self.value = nn.Linear(hidden_size, self.all_head_size)
+        self.query = nn.Linear(text_hidden_size, self.all_head_size)
+        self.key = nn.Linear(molecule_hidden_size, self.all_head_size)
+        self.value = nn.Linear(molecule_hidden_size, self.all_head_size)
 
         self.dropout = nn.Dropout(attention_probs_dropout_prob)
 
@@ -71,11 +73,13 @@ class BertAttOutput(nn.Module):
 
 
 class BertCrossattLayer(nn.Module):
-    def __init__(self, hidden_size, attention_probs_dropout_prob, hidden_dropout_prob, num_attention_heads=12):
+    def __init__(self, text_hidden_size, molecule_hidden_size, attention_probs_dropout_prob, hidden_dropout_prob,
+                 num_attention_heads=12):
         super().__init__()
-        self.att = BertAttention(hidden_size=hidden_size, attention_probs_dropout_prob=attention_probs_dropout_prob,
+        self.att = BertAttention(text_hidden_size=text_hidden_size, molecule_hidden_size=molecule_hidden_size,
+                                 attention_probs_dropout_prob=attention_probs_dropout_prob,
                                  num_attention_heads=num_attention_heads)
-        self.output = BertAttOutput(hidden_size=hidden_size, hidden_dropout_prob=hidden_dropout_prob)
+        self.output = BertAttOutput(hidden_size=text_hidden_size, hidden_dropout_prob=hidden_dropout_prob)
 
     def forward(self, input_tensor, ctx_tensor, ctx_att_mask=None):
         output = self.att(input_tensor, ctx_tensor, ctx_att_mask)
