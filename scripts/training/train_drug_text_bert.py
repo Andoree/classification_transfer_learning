@@ -461,11 +461,11 @@ def get_row_sider_embedding(row):
 
 
 def get_sider_emb_by_drugbank_id(drugbank_ids, sider_embs, drugs_sep='~', emb_size=1320):
-    drugbank_ids_list = drugbank_ids.split(drugs_sep)
-
-    if np.isnan(drugbank_ids):
+    if (type(drugbank_ids) == str and drugbank_ids.strip() == '') or np.isnan(drugbank_ids):
         embedding = np.zeros(shape=emb_size, dtype=np.float)
         return embedding
+    drugbank_ids_list = drugbank_ids.split(drugs_sep)
+
     for drug_id in drugbank_ids_list:
         embedding = sider_embs[drug_id]
         if np.isnan(embedding[0]):
