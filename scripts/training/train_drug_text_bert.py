@@ -456,9 +456,8 @@ def get_positive_class_loss_weight(data_df, class_column="class"):
 
 
 def get_row_sider_embedding(row):
-    embedding = row.loc["0":"1319"].values
+    embedding = row.loc["0":"1319"].astype(np.float).values
     return embedding
-
 
 def get_sider_emb_by_drugbank_id(drugbank_ids, sider_embs, drugs_sep='~', emb_size=1320):
     if (type(drugbank_ids) == str and drugbank_ids.strip() == '') or drugbank_ids is np.nan:
