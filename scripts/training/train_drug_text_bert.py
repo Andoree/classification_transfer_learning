@@ -406,16 +406,19 @@ class CrossModalityBertClassifier(nn.Module):
 
         self.bert_text_encoder = bert_text_encoder
         self.bert_molecule_encoder = bert_molecule_encoder
-        bert_hidden_dim = bert_text_encoder.config.hidden_size
-        self.cross_attention_layer = BertCrossattLayer(bert_hidden_dim, cross_att_attention_dropout,
-                                                       cross_att_hidden_dropout)
+        text_bert_hidden_dim = bert_text_encoder.config.hidden_size
+        molecule_bert_hidden_dim = bert_molecule_encoder.config.hidden_size
+        num_attention_heads = text_bert_hidden_dim // 64
+        self.cross_attention_layer = BertCrossattLayer(text_bert_hidden_dim, molecule_bert_hidden_dim,
+                                                       cross_att_attention_dropout, cross_att_hidden_dropout,
+                                                       num_attention_heads=num_attention_heads)
         self.classifier = nn.Sequential(
             nn.Dropout(p=classifier_dropout),
             nn.GELU(),
-            nn.Linear(bert_hidden_dim, bert_hidden_dim),
+            nn.Linear(text_bert_hidden_dim, text_bert_hidden_dim),
             nn.Dropout(p=classifier_dropout),
             nn.GELU(),
-            nn.Linear(bert_hidden_dim, 1),
+            nn.Linear(text_bert_hidden_dim, 1),
         )
 
     def forward(self, text_inputs, text_attention_mask, molecule_inputs, molecule_attention_mask, ):
