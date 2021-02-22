@@ -496,6 +496,7 @@ def main():
     text_encoder_name = config.get("PARAMETERS", "TEXT_ENCODER_NAME")
     apply_upsampling = config.getboolean("PARAMETERS", "APPLY_UPSAMPLING")
     use_weighted_loss = config.getboolean("PARAMETERS", "USE_WEIGHTED_LOSS")
+    loss_weight = config.getfloat("PARAMETERS", "LOSS_WEIGHT")
     model_type = config["PARAMETERS"]["MODEL_TYPE"]
     encoder_state_path = config["PARAMETERS"]["ENCODER_STATE_PATH"]
     output_dir = config["OUTPUT"]["OUTPUT_DIR"]
@@ -616,7 +617,10 @@ def main():
     use_drug_embeddings = False
     cross_att_flag = False
     if use_weighted_loss:
-        pos_weight = [get_positive_class_loss_weight(train_df, ), ]
+        if loss_weight < 0:
+            pos_weight = [get_positive_class_loss_weight(train_df, ), ]
+        else:
+            pos_weight = [loss_weight, ]
         print("pos_weight", pos_weight)
         pos_weight = torch.FloatTensor(pos_weight).to(device)
         criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(device)
