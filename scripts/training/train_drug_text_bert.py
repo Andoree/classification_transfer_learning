@@ -459,6 +459,7 @@ def get_row_sider_embedding(row):
     embedding = row.loc["0":"1319"].astype(np.float).values
     return embedding
 
+
 def get_sider_emb_by_drugbank_id(drugbank_ids, sider_embs, drugs_sep='~', emb_size=1320):
     if (type(drugbank_ids) == str and drugbank_ids.strip() == '') or drugbank_ids is np.nan:
         embedding = np.zeros(shape=emb_size, dtype=np.float)
@@ -496,6 +497,7 @@ def main():
     apply_upsampling = config.getboolean("PARAMETERS", "APPLY_UPSAMPLING")
     use_weighted_loss = config.getboolean("PARAMETERS", "USE_WEIGHTED_LOSS")
     model_type = config["PARAMETERS"]["MODEL_TYPE"]
+    encoder_state_path = config["PARAMETERS"]["ENCODER_STATE_PATH"]
     output_dir = config["OUTPUT"]["OUTPUT_DIR"]
     if not os.path.exists(output_dir) and output_dir != '':
         os.makedirs(output_dir)
@@ -570,12 +572,14 @@ def main():
         f"Datasets sizes: mono_train {train_df.shape[0]},\n"
         f"dev: {dev_df.shape[0]},\n"
         f"test: {test_df.shape[0]}")
-    if model_type == "roberta-large":
-        text_tokenizer = RobertaTokenizer.from_pretrained('roberta-large', cache_dir="models/")
-        bert_text_encoder = RobertaModel.from_pretrained('roberta-large', cache_dir="models/")
-    else:
-        bert_text_encoder = AutoModel.from_pretrained(text_encoder_name, cache_dir="models/")
-        text_tokenizer = AutoTokenizer.from_pretrained(text_encoder_name, cache_dir="models/")
+    # if model_type == "roberta-large":
+    #     text_tokenizer = RobertaTokenizer.from_pretrained('roberta-large', cache_dir="models/")
+    #     bert_text_encoder = RobertaModel.from_pretrained('roberta-large', cache_dir="models/")
+    # else:
+    bert_text_encoder = AutoModel.from_pretrained(text_encoder_name, cache_dir="models/")
+    text_tokenizer = AutoTokenizer.from_pretrained(text_encoder_name, cache_dir="models/")
+    if encoder_state_path != '-1':
+        bert_text_encoder.load_state_dict(torch.load(encoder_state_path))
     if model_type == "attention":
         chemberta_tokenizer = AutoTokenizer.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/")
     else:
