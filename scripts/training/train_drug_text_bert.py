@@ -21,18 +21,18 @@ device = "cuda" if torch.cuda.is_available else "cpu"
 
 class TweetsDataset(Dataset):
     def __init__(self, tweets_df, text_tokenizer, molecule_tokenizer=None, molecule_max_length=256,
-                 text_max_length=128):
+                 text_max_length=128, sampling_type="first"):
         self.labels = tweets_df["class"].astype(np.float32).values
         self.text_max_length = text_max_length
+        self.sampling_type = sampling_type
         self.molecule_max_length = molecule_max_length
         self.tokenized_tweets = [text_tokenizer.encode_plus(x, max_length=self.text_max_length,
                                                             padding="max_length", truncation=True,
                                                             return_tensors="pt", ) for x in tweets_df.tweet.values]
         self.tokenized_molecules = None
         if molecule_tokenizer is not None:
-            # TODO: Фикс: брать только первую из молекул
-            smiles_list = get_first_smile(tweets_df.smiles.values)
-            self.tokenized_molecules = [molecule_tokenizer.encode_plus(x, max_length=self.molecule_max_length,
+            smiles_list = get_smiles_list(tweets_df.smiles.values)
+            self.tokenized_molecules = [molecule_tokenizer.batch_encode_plus(x, max_length=self.molecule_max_length,
                                                                        padding="max_length", truncation=True,
                                                                        return_tensors="pt", ) for x in
                                         smiles_list]
@@ -47,9 +47,14 @@ class TweetsDataset(Dataset):
             "labels": self.labels[idx]
         }
         if self.tokenized_molecules is not None:
-            sample_dict["molecule_input_ids"] = self.tokenized_molecules[idx]["input_ids"][0]
-            sample_dict["molecule_attention_mask"] = self.tokenized_molecules[idx]["attention_mask"][0]
-
+            if self.sampling_type == "random":
+                num_samples = self.tokenized_molecules[idx]["input_ids"].size()[0]
+                sample_id = random.randint(0, num_samples - 1)
+                sample_dict["molecule_input_ids"] = self.tokenized_molecules[idx]["input_ids"][sample_id]
+                sample_dict["molecule_attention_mask"] = self.tokenized_molecules[idx]["attention_mask"][sample_id]
+            else:
+                sample_dict["molecule_input_ids"] = self.tokenized_molecules[idx]["input_ids"][0]
+                sample_dict["molecule_attention_mask"] = self.tokenized_molecules[idx]["attention_mask"][0]
         return sample_dict
 
     def __len__(self):
@@ -115,13 +120,13 @@ def train(model, iterator, optimizer, criterion, use_drug_embeddings=True, cross
     return epoch_loss / (i + 1)
 
 
-def get_first_smile(smiles_list, molecules_sep='~~~'):
+def get_smiles_list(smiles_list, molecules_sep='~~~'):
     preprocessed_smiles = []
     for smile_str in smiles_list:
         if smile_str is np.nan:
-            preprocessed_smiles.append("")
+            preprocessed_smiles.append([""])
         else:
-            preprocessed_smiles.append(smile_str.split(molecules_sep)[0])
+            preprocessed_smiles.append(smile_str.split(molecules_sep))
     return preprocessed_smiles
 
 
@@ -533,7 +538,6 @@ def main():
         sider_embs_df.set_index("drugbank_id", inplace=True)
         sider_embs_df["sider_drug_emb"] = sider_embs_df.apply(lambda row: get_row_sider_embedding(row), axis=1)
         sider_embs_df = sider_embs_df["sider_drug_emb"]
-        # TODO
         # drug_enc_hid_dim = len(train_df["drug_embedding"].values[0])
         drug_enc_hid_dim = 1320
         train_df["drug_embedding"] = train_df["drug_id"].apply(
@@ -586,7 +590,7 @@ def main():
     else:
         chemberta_tokenizer = None
     train_tweets_dataset = TweetsDataset(train_df, text_tokenizer, text_max_length=max_length,
-                                         molecule_tokenizer=chemberta_tokenizer)
+                                         molecule_tokenizer=chemberta_tokenizer, sampling_type="random")
     dev_tweets_dataset = TweetsDataset(dev_df, text_tokenizer, text_max_length=max_length,
                                        molecule_tokenizer=chemberta_tokenizer)
     test_tweets_dataset = TweetsDataset(test_df, text_tokenizer, text_max_length=max_length,
