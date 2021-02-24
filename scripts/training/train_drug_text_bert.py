@@ -621,7 +621,7 @@ def main():
     text_tokenizer = AutoTokenizer.from_pretrained(text_encoder_name, cache_dir="models/")
     if encoder_state_path != '-1':
         bert_text_encoder.load_state_dict(torch.load(encoder_state_path))
-    if model_type == "attention":
+    if model_type == "attention" or model_type == "concat":
         chemberta_tokenizer = AutoTokenizer.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/")
     else:
         chemberta_tokenizer = None
