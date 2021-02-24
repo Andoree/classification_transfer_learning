@@ -686,7 +686,7 @@ def main():
             device)
         bert_classifier = ConcatDoubleEncoderBertClassifieer(bert_text_encoder=bert_text_encoder,
                                                              bert_molecule_encoder=chemberta_model,
-                                                             classifier_dropout=dropout_p, )
+                                                             classifier_dropout=dropout_p, ).to(device)
         checkpoint_name = f"{train_type}_concat_{text_encoder_name.split('/')[-1]}"
     elif model_type == "attention":
         cross_att_attention_dropout = config.getfloat("CROSSATT_PARAM", "CROSSATT_DROPOUT")
