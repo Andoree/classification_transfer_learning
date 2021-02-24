@@ -13,7 +13,7 @@ from sklearn.metrics import precision_score, f1_score, recall_score
 from torch import nn
 from torch.utils.data import Dataset
 from tqdm import tqdm
-from transformers import AutoModel, RobertaModel, RobertaTokenizer
+from transformers import AutoModel, RobertaModel
 from transformers import AutoTokenizer
 
 device = "cuda" if torch.cuda.is_available else "cpu"
@@ -33,8 +33,8 @@ class TweetsDataset(Dataset):
         if molecule_tokenizer is not None:
             smiles_list = get_smiles_list(tweets_df.smiles.values)
             self.tokenized_molecules = [molecule_tokenizer.batch_encode_plus(x, max_length=self.molecule_max_length,
-                                                                       padding="max_length", truncation=True,
-                                                                       return_tensors="pt", ) for x in
+                                                                             padding="max_length", truncation=True,
+                                                                             return_tensors="pt", ) for x in
                                         smiles_list]
         self.drug_embeddings = tweets_df.drug_embedding.values
         self.smiles = tweets_df.smiles.values
@@ -504,6 +504,7 @@ def main():
     loss_weight = config.getfloat("PARAMETERS", "LOSS_WEIGHT")
     model_type = config["PARAMETERS"]["MODEL_TYPE"]
     encoder_state_path = config["PARAMETERS"]["ENCODER_STATE_PATH"]
+    train_drug_sampling_type = config["PARAMETERS"]["DRUG_SAMPLING"]
     output_dir = config["OUTPUT"]["OUTPUT_DIR"]
     if not os.path.exists(output_dir) and output_dir != '':
         os.makedirs(output_dir)
@@ -577,10 +578,6 @@ def main():
         f"Datasets sizes: mono_train {train_df.shape[0]},\n"
         f"dev: {dev_df.shape[0]},\n"
         f"test: {test_df.shape[0]}")
-    # if model_type == "roberta-large":
-    #     text_tokenizer = RobertaTokenizer.from_pretrained('roberta-large', cache_dir="models/")
-    #     bert_text_encoder = RobertaModel.from_pretrained('roberta-large', cache_dir="models/")
-    # else:
     bert_text_encoder = AutoModel.from_pretrained(text_encoder_name, cache_dir="models/")
     text_tokenizer = AutoTokenizer.from_pretrained(text_encoder_name, cache_dir="models/")
     if encoder_state_path != '-1':
@@ -589,8 +586,9 @@ def main():
         chemberta_tokenizer = AutoTokenizer.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/")
     else:
         chemberta_tokenizer = None
+
     train_tweets_dataset = TweetsDataset(train_df, text_tokenizer, text_max_length=max_length,
-                                         molecule_tokenizer=chemberta_tokenizer, sampling_type="random")
+                                         molecule_tokenizer=chemberta_tokenizer, sampling_type=train_drug_sampling_type)
     dev_tweets_dataset = TweetsDataset(dev_df, text_tokenizer, text_max_length=max_length,
                                        molecule_tokenizer=chemberta_tokenizer)
     test_tweets_dataset = TweetsDataset(test_df, text_tokenizer, text_max_length=max_length,
