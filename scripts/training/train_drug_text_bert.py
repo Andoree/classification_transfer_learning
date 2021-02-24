@@ -65,7 +65,7 @@ class TweetsDataset(Dataset):
             yield self[i]
 
 
-def create_dataset_weights(dataset):
+def create_dataset_weights(dataset, positive_class_weight=-1.0):
     count_dict = {}
     for item in dataset:
         label = item["labels"]
@@ -75,9 +75,15 @@ def create_dataset_weights(dataset):
     num_samples = len(dataset)
     label_to_weight = {}
     assert num_samples == sum(count_dict.values())
-    for cl, count in count_dict.items():
-        freq = count / num_samples
-        label_to_weight[cl] = 1 - freq
+    count_0 = count_dict[0]
+    count_1 = count_dict[1]
+    freq_0 = count_0 / num_samples
+    freq_1 = count_1 / num_samples
+    label_to_weight[0] = 1 - freq_0
+    if positive_class_weight <= 0:
+        label_to_weight[1] = 1 - freq_1
+    else:
+        label_to_weight[1] = label_to_weight[0] * positive_class_weight
     sample_weights = np.empty(num_samples, dtype=np.float)
     for i, item in enumerate(dataset):
         label = item["labels"]
@@ -404,6 +410,39 @@ class BertClassifierWithDrugEmbeddings(nn.Module):
         return proba
 
 
+class ConcatDoubleEncoderBertClassifieer(nn.Module):
+    def __init__(self, bert_text_encoder, bert_molecule_encoder, classifier_dropout, ):
+        super().__init__()
+
+        self.bert_text_encoder = bert_text_encoder
+        self.bert_molecule_encoder = bert_molecule_encoder
+        text_bert_hidden_dim = bert_text_encoder.config.hidden_size
+        molecule_bert_hidden_dim = bert_molecule_encoder.config.hidden_size
+
+        self.classifier = nn.Sequential(
+            nn.Dropout(p=classifier_dropout),
+            nn.GELU(),
+            nn.Linear(text_bert_hidden_dim + molecule_bert_hidden_dim, text_bert_hidden_dim),
+            nn.Dropout(p=classifier_dropout),
+            nn.GELU(),
+            nn.Linear(text_bert_hidden_dim, 1),
+        )
+
+    def forward(self, text_inputs, text_attention_mask, molecule_inputs, molecule_attention_mask, ):
+        text_last_hidden_states = self.bert_text_encoder(text_inputs, attention_mask=text_attention_mask,
+                                                         return_dict=True)['last_hidden_state']
+
+        molecule_last_hidden_states = \
+            self.bert_molecule_encoder(molecule_inputs, attention_mask=molecule_attention_mask,
+                                       return_dict=True)['last_hidden_state']
+        text_cls_embeddings = torch.stack([elem[0, :] for elem in text_last_hidden_states])
+        molecule_cls_embeddings = torch.stack([elem[0, :] for elem in molecule_last_hidden_states])
+        concat_text_drug_embeddings = torch.cat([text_cls_embeddings, molecule_cls_embeddings], dim=1)
+
+        proba = self.classifier(concat_text_drug_embeddings)
+        return proba
+
+
 class CrossModalityBertClassifier(nn.Module):
     def __init__(self, bert_text_encoder, bert_molecule_encoder, classifier_dropout, cross_att_attention_dropout,
                  cross_att_hidden_dropout):
@@ -594,10 +633,11 @@ def main():
     test_tweets_dataset = TweetsDataset(test_df, text_tokenizer, text_max_length=max_length,
                                         molecule_tokenizer=chemberta_tokenizer)
 
-    train_weights = create_dataset_weights(train_tweets_dataset)
-    train_weights = torch.DoubleTensor(train_weights)
-
     if apply_upsampling:
+        positive_class_weight = config.getfloat("UPSAMPLING", "UPSAMPLING_WEIGHT")
+        train_weights = create_dataset_weights(train_tweets_dataset, positive_class_weight)
+        print("Sampling weights:", set(train_weights))
+        train_weights = torch.DoubleTensor(train_weights)
         russian_sampler = torch.utils.data.sampler.WeightedRandomSampler(train_weights, len(train_weights))
         shuffle = False
     else:
@@ -640,6 +680,13 @@ def main():
                                                            drug_enc_hid_dim=drug_enc_hid_dim,
                                                            dropout=dropout_p).to(device)
         checkpoint_name = f"{train_type}_drug_{text_encoder_name.split('/')[-1]}"
+    elif model_type == "concat":
+        chemberta_model = RobertaModel.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/").to(
+            device)
+        bert_classifier = ConcatDoubleEncoderBertClassifieer(bert_text_encoder=bert_text_encoder,
+                                                             bert_molecule_encoder=chemberta_model,
+                                                             classifier_dropout=dropout_p, )
+        checkpoint_name = f"{train_type}_concat_{text_encoder_name.split('/')[-1]}"
     elif model_type == "attention":
         cross_att_attention_dropout = config.getfloat("CROSSATT_PARAM", "CROSSATT_DROPOUT")
         cross_att_hidden_dropout = config.getfloat("CROSSATT_PARAM", "CROSSATT_HIDDEN_DROPOUT")
