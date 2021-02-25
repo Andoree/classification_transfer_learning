@@ -480,6 +480,37 @@ class CrossModalityBertClassifier(nn.Module):
         return proba
 
 
+class DrugWithAttentionBertClassifier(nn.Module):
+    def __init__(self, bert_text_encoder, drug_enc_hid_dim, cross_att_attention_dropout,
+                 cross_att_hidden_dropout, classifier_dropout):
+        super().__init__()
+
+        self.bert_text_encoder = bert_text_encoder
+        text_bert_hidden_dim = bert_text_encoder.config.hidden_size
+        num_attention_heads = text_bert_hidden_dim // 64
+        self.cross_attention_layer = BertCrossattLayer(text_bert_hidden_dim, drug_enc_hid_dim,
+                                                       cross_att_attention_dropout, cross_att_hidden_dropout,
+                                                       num_attention_heads=num_attention_heads)
+        self.classifier = nn.Sequential(
+            nn.Dropout(p=classifier_dropout),
+            nn.GELU(),
+            nn.Linear(text_bert_hidden_dim, text_bert_hidden_dim),
+            nn.Dropout(p=classifier_dropout),
+            nn.GELU(),
+            nn.Linear(text_bert_hidden_dim, 1),
+        )
+
+    def forward(self, inputs, attention_mask, drug_embeddings):
+        test_last_hidden_states = self.bert_text_encoder(inputs, attention_mask=attention_mask,
+                                                         return_dict=True)['last_hidden_state']
+        cross_attention_output = self.cross_attention_layer(input_tensor=test_last_hidden_states,
+                                                            ctx_tensor=drug_embeddings, )
+        cross_att_output_cls_embs = torch.stack([elem[0, :] for elem in cross_attention_output])
+        proba = self.classifier(cross_att_output_cls_embs)
+
+        return proba
+
+
 def clear():
     os.system('cls')
 
@@ -638,16 +669,16 @@ def main():
         train_weights = create_dataset_weights(train_tweets_dataset, positive_class_weight)
         print("Sampling weights:", set(train_weights))
         train_weights = torch.DoubleTensor(train_weights)
-        russian_sampler = torch.utils.data.sampler.WeightedRandomSampler(train_weights, len(train_weights))
+        sampler = torch.utils.data.sampler.WeightedRandomSampler(train_weights, len(train_weights))
         shuffle = False
     else:
-        russian_sampler = None
+        sampler = None
         shuffle = True
 
     num_workers = 4
 
     train_loader = torch.utils.data.DataLoader(
-        train_tweets_dataset, batch_size=batch_size, num_workers=num_workers, sampler=russian_sampler, shuffle=shuffle,
+        train_tweets_dataset, batch_size=batch_size, num_workers=num_workers, sampler=sampler, shuffle=shuffle,
         drop_last=True,
     )
     dev_loader = torch.utils.data.DataLoader(
@@ -688,6 +719,16 @@ def main():
                                                              bert_molecule_encoder=chemberta_model,
                                                              classifier_dropout=dropout_p, ).to(device)
         checkpoint_name = f"{train_type}_concat_{text_encoder_name.split('/')[-1]}"
+    elif model_type == "drug_attention":
+        cross_att_attention_dropout = config.getfloat("CROSSATT_PARAM", "CROSSATT_DROPOUT")
+        cross_att_hidden_dropout = config.getfloat("CROSSATT_PARAM", "CROSSATT_HIDDEN_DROPOUT")
+        use_drug_embeddings = True
+        bert_classifier = DrugWithAttentionBertClassifier(bert_text_encoder=bert_text_encoder,
+                                                          classifier_dropout=dropout_p,
+                                                          drug_enc_hid_dim=drug_enc_hid_dim,
+                                                          cross_att_attention_dropout=cross_att_attention_dropout,
+                                                          cross_att_hidden_dropout=cross_att_hidden_dropout).to(device)
+        checkpoint_name = f"{train_type}_drugattention_{text_encoder_name.split('/')[-1]}"
     elif model_type == "attention":
         cross_att_attention_dropout = config.getfloat("CROSSATT_PARAM", "CROSSATT_DROPOUT")
         cross_att_hidden_dropout = config.getfloat("CROSSATT_PARAM", "CROSSATT_HIDDEN_DROPOUT")
