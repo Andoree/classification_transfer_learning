@@ -53,19 +53,19 @@ def main():
     logistic_regression_model = LogisticRegression(random_state=random_state, max_iter=1000)
     logistic_regression_model.fit(dev_predictions_numpy, dev_true_labels)
     dev_predictions = logistic_regression_model.predict_proba(dev_predictions_numpy)
-
     best_f1_score = -1.0
     best_decision_threshold = 0.0
     for i in range(1, 100):
         decision_threshold = 0.01 * i
-        dev_pred_labels = [1 if x > decision_threshold else 0 for x in dev_predictions]
+        dev_pred_labels = [1 if x[1] > decision_threshold else 0 for x in dev_predictions]
         dev_f1_score = f1_score(dev_true_labels, dev_pred_labels)
         if dev_f1_score > best_f1_score:
             best_f1_score = dev_f1_score
             best_decision_threshold = decision_threshold
-        dev_predictions = [1 if x > best_decision_threshold else 0 for x in dev_predictions]
+    # best_decision_threshold = 0.5
+    dev_predictions = [1 if x[1] > best_decision_threshold else 0 for x in dev_predictions]
     print("Dev:")
-    print("Threshold:", best_f1_score)
+    print("Threshold:", best_decision_threshold, "F1", best_f1_score )
     print(classification_report(dev_true_labels, dev_predictions))
     for metric_name, metric in METRICS.items():
         print(f"{metric_name}", metric(dev_true_labels, dev_predictions))
@@ -89,7 +89,7 @@ def main():
     test_all_predictions = pd.concat(test_predictions, axis=1)
     test_predictions_numpy = test_all_predictions.values
     test_predictions = logistic_regression_model.predict_proba(test_predictions_numpy)
-    test_predictions = [1 if x > best_decision_threshold else 0 for x in test_predictions]
+    test_predictions = [1 if x[1] > best_decision_threshold else 0 for x in test_predictions]
     if calculate_metrics:
         print("Test")
         true_labels_df = test_data_df["class"]
