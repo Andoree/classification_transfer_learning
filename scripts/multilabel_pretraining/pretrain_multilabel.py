@@ -18,12 +18,12 @@ LABELS = ["EF", "INF", "ADR", "DI", "Finding"]
 
 
 class SentencesDataset(Dataset):
-    def __init__(self, data_df, text_tokenizer, max_length=128):
+    def __init__(self, data_df, text_tokenizer, max_length=128, text_column="sentences"):
         self.labels = data_df[LABELS].astype(np.float32).values
         self.max_length = max_length
         self.tokenized_tweets = [text_tokenizer.encode_plus(x, max_length=self.max_length,
                                                             padding="max_length", truncation=True,
-                                                            return_tensors="pt", ) for x in data_df.sentences.values]
+                                                            return_tensors="pt", ) for x in data_df[text_column].values]
 
     def __getitem__(self, idx):
         return {
@@ -226,8 +226,9 @@ def main():
     tweets_dev_path = os.path.join(tweets_dir, "dev.tsv")
     tweets_dev_df = pd.read_csv(tweets_dev_path, sep='\t', quoting=3)
     tweets_test_df = pd.read_csv(tweets_test_path, sep='\t', quoting=3)
-    tweets_dev_df[LABELS] = 0
-    tweets_test_df[LABELS] = 0
+    for label in LABELS:
+        tweets_dev_df[label] = 0
+        tweets_test_df[label] = 0
 
     train_df = pd.read_csv(train_path, encoding="utf-8")
     dev_df = pd.read_csv(dev_path, encoding="utf-8")
@@ -237,8 +238,9 @@ def main():
 
     train_dataset = SentencesDataset(train_df, text_tokenizer, max_length=max_seq_length)
     dev_dataset = SentencesDataset(dev_df, text_tokenizer, max_length=max_seq_length)
-    tweets_dev_dataset = SentencesDataset(tweets_dev_df, text_tokenizer, max_length=max_seq_length)
-    tweets_test_dataset = SentencesDataset(tweets_test_df, text_tokenizer, max_length=max_seq_length)
+    tweets_dev_dataset = SentencesDataset(tweets_dev_df, text_tokenizer, max_length=max_seq_length, text_column="tweet")
+    tweets_test_dataset = SentencesDataset(tweets_test_df, text_tokenizer, max_length=max_seq_length,
+                                           text_column="tweet")
 
     num_workers = 4
 
