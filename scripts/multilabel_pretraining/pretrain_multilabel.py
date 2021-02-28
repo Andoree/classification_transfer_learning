@@ -103,7 +103,7 @@ def epoch_time(start_time, end_time):
 
 
 def train_evaluate_multilabel(bert_classifier, train_loader, dev_loader, optimizer, criterion, n_epochs,
-                              checkpoint_fname, device):
+                              checkpoint_fname, device, output_model_dir, ):
     train_history = []
     valid_history = []
     valid_history_f1 = []
@@ -127,7 +127,7 @@ def train_evaluate_multilabel(bert_classifier, train_loader, dev_loader, optimiz
 
         if valid_f1_score > best_f1_score:
             best_f1_score = valid_f1_score
-            torch.save(bert_classifier.state_dict(), f'best-val-{checkpoint_fname}.pt')
+            torch.save(bert_classifier.state_dict(), os.path.join(output_model_dir, f'best-val-{checkpoint_fname}.pt'))
 
         print(f'Epoch: {epoch+1:02} | Time: {epoch_mins}m {epoch_secs}s')
         print(f'\tTrain Loss: {train_loss:.3f}')
@@ -137,7 +137,7 @@ def train_evaluate_multilabel(bert_classifier, train_loader, dev_loader, optimiz
 def predict_multilabel(model, data_loader, device):
     true_labels = []
     pred_labels = []
-
+    pred_probas = []
     model.eval()
     with torch.no_grad():
         for i, batch in enumerate(data_loader):
@@ -145,15 +145,16 @@ def predict_multilabel(model, data_loader, device):
             attention_mask = batch["attention_mask"].to(device)
             batch_true_labels = batch["labels"].cpu().numpy()
 
-            pred_probas = model(inputs=input_ids, attention_mask=attention_mask, ).squeeze(1)
+            batch_pred_probas = model(inputs=input_ids, attention_mask=attention_mask, ).squeeze(1)
 
-            pred_probas = pred_probas.cpu().numpy()
+            batch_pred_probas = batch_pred_probas.cpu().numpy()
+            pred_probas.extend(batch_pred_probas)
 
-            batch_pred_labels = (pred_probas >= 0.5) * 1
+            batch_pred_labels = (batch_pred_probas >= 0.5) * 1
 
             pred_labels.extend(batch_pred_labels)
             true_labels.extend(batch_true_labels)
-    return true_labels, pred_labels
+    return true_labels, pred_labels, pred_probas
 
 
 class BertMultilabelClassifier(nn.Module):
@@ -181,11 +182,19 @@ class BertMultilabelClassifier(nn.Module):
         return proba
 
 
+def save_multilabel_labels_probas(labels_path, probas_path, labels, probas):
+    with codecs.open(labels_path, 'w+', encoding="utf-8") as labels_file, \
+            codecs.open(probas_path, 'w+', encoding="utf-8") as probas_file:
+        for label, probabilities in zip(labels, probas):
+            labels_file.write(f"{label}\n")
+            probas_file.write(f"{','.join(probabilities)}\n")
+
+
 def main():
     config = configparser.ConfigParser()
     config.read("config_pretrain.ini")
     data_dir = config["INPUT"]["INPUT_DIR"]
-
+    tweets_dir = config["INPUT"]["TWEETS_DIR"]
     seed = config.getint("PARAMETERS", "SEED")
     max_seq_length = config.getint("PARAMETERS", "MAX_SEQ_LENGTH")
     batch_size = config.getint("PARAMETERS", "BATCH_SIZE")
@@ -213,6 +222,12 @@ def main():
 
     train_path = os.path.join(data_dir, "train.csv")
     dev_path = os.path.join(data_dir, "dev.csv")
+    tweets_test_path = os.path.join(tweets_dir, "test.tsv")
+    tweets_dev_path = os.path.join(tweets_dir, "dev.tsv")
+    tweets_dev_df = pd.read_csv(tweets_dev_path, sep='\t', quoting=3)
+    tweets_test_df = pd.read_csv(tweets_test_path, sep='\t', quoting=3)
+    tweets_dev_df[LABELS] = 0
+    tweets_test_df[LABELS] = 0
 
     train_df = pd.read_csv(train_path, encoding="utf-8")
     dev_df = pd.read_csv(dev_path, encoding="utf-8")
@@ -222,6 +237,8 @@ def main():
 
     train_dataset = SentencesDataset(train_df, text_tokenizer, max_length=max_seq_length)
     dev_dataset = SentencesDataset(dev_df, text_tokenizer, max_length=max_seq_length)
+    tweets_dev_dataset = SentencesDataset(tweets_dev_df, text_tokenizer, max_length=max_seq_length)
+    tweets_test_dataset = SentencesDataset(tweets_test_df, text_tokenizer, max_length=max_seq_length)
 
     num_workers = 4
 
@@ -231,6 +248,12 @@ def main():
     dev_loader = torch.utils.data.DataLoader(
         dev_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
     )
+    tweets_dev_loader = torch.utils.data.DataLoader(
+        tweets_dev_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
+    )
+    tweets_test_loader = torch.utils.data.DataLoader(
+        tweets_test_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
+    )
 
     torch.manual_seed(seed)
 
@@ -238,11 +261,26 @@ def main():
     optimizer = optim.Adam(bert_clf.parameters(), lr=learning_rate)
     criterion = nn.BCEWithLogitsLoss()
     train_evaluate_multilabel(bert_clf, train_loader, dev_loader, optimizer, criterion, num_epochs,
-                              output_checkpoint_name, device)
+                              output_checkpoint_name, device, output_dir)
 
-    bert_clf.load_state_dict(torch.load(f"best-val-{output_checkpoint_name}.pt"))
+    bert_clf.load_state_dict(torch.load(os.path.join(output_dir, f'best-val-{output_checkpoint_name}.pt')))
 
-    true_labels, pred_labels = predict_multilabel(bert_clf, dev_loader, device)
+    true_labels, pred_labels, pred_probas = predict_multilabel(bert_clf, dev_loader, device)
+    tweets_dev_true_labels, tweets_dev_pred_labels, tweets_dev_pred_probas \
+        = predict_multilabel(bert_clf, tweets_dev_loader, device)
+    tweets_test_true_labels, tweets_test_pred_labels, tweets_test_pred_probas = predict_multilabel(bert_clf,
+                                                                                                   tweets_test_loader,
+                                                                                                   device)
+
+    save_multilabel_labels_probas(labels_path=os.path.join(output_dir, "pred_dev_labels.txt"),
+                                  probas_path=os.path.join(output_dir, "pred_dev_probas.txt"),
+                                  labels=tweets_dev_pred_labels,
+                                  probas=tweets_dev_pred_probas)
+    save_multilabel_labels_probas(labels_path=os.path.join(output_dir, "pred_test_labels.txt"),
+                                  probas_path=os.path.join(output_dir, "pred_test_probas.txt"),
+                                  labels=tweets_test_pred_labels,
+                                  probas=tweets_test_pred_probas)
+
     with codecs.open(output_eval_path, 'w+', encoding="utf-8") as output_file:
         output_file.write(f"train size: {len(train_loader)}\n")
         output_file.write(f"Dev size: {len(dev_loader)}\n")
@@ -251,7 +289,7 @@ def main():
         output_file.write(f"F1: {f1_score(true_labels, pred_labels, average='macro')}\n")
         output_file.write(f"F1: {classification_report(true_labels, pred_labels, )}\n")
 
-    torch.save(bert_clf.bert_text_encoder.state_dict(), f"{output_checkpoint_name}.pt")
+    torch.save(bert_clf.bert_text_encoder.state_dict(), os.path.join(output_dir, f'{output_checkpoint_name}.pt'))
 
 
 if __name__ == '__main__':
