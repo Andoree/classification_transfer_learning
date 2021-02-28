@@ -185,9 +185,9 @@ class BertMultilabelClassifier(nn.Module):
 def save_multilabel_labels_probas(labels_path, probas_path, labels, probas):
     with codecs.open(labels_path, 'w+', encoding="utf-8") as labels_file, \
             codecs.open(probas_path, 'w+', encoding="utf-8") as probas_file:
-        for label, probabilities in zip(labels, probas):
-            labels_file.write(f"{label}\n")
-            probas_file.write(f"{','.join(probabilities)}\n")
+        for labels, probabilities in zip(labels, probas):
+            labels_file.write(f"{[str(x) for x in labels]}\n")
+            probas_file.write(f"{','.join([str(x) for x in probabilities])}\n")
 
 
 def main():
