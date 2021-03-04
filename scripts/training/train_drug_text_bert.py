@@ -597,14 +597,15 @@ def main():
         data_dir = config["INPUT"]["BILINGUAL_INPUT_DIR"]
     else:
         raise ValueError(f"Invalid dataset type: {train_type}")
+    train_path = os.path.join(data_dir, "train.tsv")
+    test_path = os.path.join(data_dir, "test.tsv")
+    dev_path = os.path.join(data_dir, "dev.tsv")
+    train_df = pd.read_csv(train_path, sep='\t', )
+    dev_df = pd.read_csv(dev_path, sep='\t',)
+    test_df = pd.read_csv(test_path, sep='\t',)
+
     if drug_embeddings_from == "sider":
         sider_path = config["SIDER"]["EMBS_PATH_GZ"]
-        train_path = os.path.join(data_dir, "train.tsv")
-        test_path = os.path.join(data_dir, "test.tsv")
-        dev_path = os.path.join(data_dir, "dev.tsv")
-        train_df = pd.read_csv(train_path, sep='\t', quoting=3)
-        dev_df = pd.read_csv(dev_path, sep='\t', quoting=3)
-        test_df = pd.read_csv(test_path, sep='\t', quoting=3)
         sider_embs_df = pd.read_csv(sider_path, compression='gzip')
         sider_embs_df.set_index("drugbank_id", inplace=True)
         sider_embs_df["sider_drug_emb"] = sider_embs_df.apply(lambda row: get_row_sider_embedding(row), axis=1)
@@ -623,12 +624,6 @@ def main():
         dev_df["drug_embedding"] = dev_df["drug_embedding"].apply(lambda x: torch.FloatTensor(x))
         del sider_embs_df
     elif drug_embeddings_from == "chemberta":
-        train_path = os.path.join(data_dir, "train.tsv")
-        test_path = os.path.join(data_dir, "test.tsv")
-        dev_path = os.path.join(data_dir, "dev.tsv")
-        train_df = pd.read_csv(train_path, sep='\t', quoting=3)
-        dev_df = pd.read_csv(dev_path, sep='\t', quoting=3)
-        test_df = pd.read_csv(test_path, sep='\t', quoting=3)
         chemberta_model = RobertaModel.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/").to(
             device)
         tokenizer = AutoTokenizer.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/")
