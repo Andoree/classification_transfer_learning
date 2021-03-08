@@ -16,7 +16,7 @@ def main():
     output_dir = os.path.dirname(output_path)
     if not os.path.exists(output_dir) and output_dir != '':
         os.makedirs(output_dir)
-    true_labels = pd.read_csv(data_path, sep='\t', )[["label", ]].values
+    true_labels = pd.read_csv(data_path, sep='\t', )[["class", ]].values
 
     evaluation_results_list = []
     for name in os.listdir(results_dir):
@@ -33,7 +33,8 @@ def main():
                     num_epochs = int(attrs[1]) if len(attrs) >= 5 else None
                     dataset = "dev" if i % 2 == 0 else "test"
                     if dataset == "test":
-                        predicted_labels = pd.read_csv(data_path, header=None,
+                        prediction_path = os.path.join(results_dir, name, "pred_test_labels.txt")
+                        predicted_labels = pd.read_csv(prediction_path, header=None,
                                                        names=["pred_labels", ]).pred_labels.values
                         f1_value = f1_score(true_labels, predicted_labels)
                         recall_value = recall_score(true_labels, predicted_labels)
