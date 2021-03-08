@@ -576,6 +576,7 @@ def main():
     encoder_state_path = config["PARAMETERS"]["ENCODER_STATE_PATH"]
     train_drug_sampling_type = config["PARAMETERS"]["DRUG_SAMPLING"]
     output_dir = config["OUTPUT"]["OUTPUT_DIR"]
+    output_dir = os.path.join(output_dir, f"seed_{seed}")
     if not os.path.exists(output_dir) and output_dir != '':
         os.makedirs(output_dir)
     output_evaluation_filename = config["OUTPUT"]["EVALUATION_FILENAME"]
