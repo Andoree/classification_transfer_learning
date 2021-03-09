@@ -707,14 +707,14 @@ def main():
         torch.manual_seed(seed)
         use_drug_embeddings = False
         bert_classifier = BertSimpleClassifier(bert_text_encoder, dropout=dropout_p).to(device)
-        checkpoint_name = f"{train_type}_simple_{text_encoder_name.split('/')[-1]}"
+        checkpoint_name = f"{train_type}_freeze{freeze_layer_count}_simple_{text_encoder_name.split('/')[-1]}"
     elif model_type == "drug":
         torch.manual_seed(seed)
         use_drug_embeddings = True
         bert_classifier = BertClassifierWithDrugEmbeddings(bert_text_encoder,
                                                            drug_enc_hid_dim=drug_enc_hid_dim,
                                                            dropout=dropout_p).to(device)
-        checkpoint_name = f"{train_type}_drug_{text_encoder_name.split('/')[-1]}"
+        checkpoint_name = f"{train_type}_freeze{freeze_layer_count}_drug_{text_encoder_name.split('/')[-1]}"
     elif model_type == "concat":
         cross_att_flag = True
         chemberta_model = RobertaModel.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="models/").to(
@@ -722,7 +722,7 @@ def main():
         bert_classifier = ConcatDoubleEncoderBertClassifieer(bert_text_encoder=bert_text_encoder,
                                                              bert_molecule_encoder=chemberta_model,
                                                              classifier_dropout=dropout_p, ).to(device)
-        checkpoint_name = f"{train_type}_concat_{text_encoder_name.split('/')[-1]}"
+        checkpoint_name = f"{train_type}_freeze{freeze_layer_count}_concat_{text_encoder_name.split('/')[-1]}"
     elif model_type == "drug_attention":
         cross_att_attention_dropout = config.getfloat("CROSSATT_PARAM", "CROSSATT_DROPOUT")
         cross_att_hidden_dropout = config.getfloat("CROSSATT_PARAM", "CROSSATT_HIDDEN_DROPOUT")
@@ -732,7 +732,7 @@ def main():
                                                           drug_enc_hid_dim=drug_enc_hid_dim,
                                                           cross_att_attention_dropout=cross_att_attention_dropout,
                                                           cross_att_hidden_dropout=cross_att_hidden_dropout).to(device)
-        checkpoint_name = f"{train_type}_drugattention_{text_encoder_name.split('/')[-1]}"
+        checkpoint_name = f"{train_type}_freeze{freeze_layer_count}_drugattention_{text_encoder_name.split('/')[-1]}"
     elif model_type == "attention":
         cross_att_attention_dropout = config.getfloat("CROSSATT_PARAM", "CROSSATT_DROPOUT")
         cross_att_hidden_dropout = config.getfloat("CROSSATT_PARAM", "CROSSATT_HIDDEN_DROPOUT")
@@ -745,7 +745,7 @@ def main():
                                                       classifier_dropout=dropout_p,
                                                       cross_att_attention_dropout=cross_att_attention_dropout,
                                                       cross_att_hidden_dropout=cross_att_hidden_dropout).to(device)
-        checkpoint_name = f"{train_type}_attention_{text_encoder_name.split('/')[-1]}"
+        checkpoint_name = f"{train_type}_freeze{freeze_layer_count}_attention_{text_encoder_name.split('/')[-1]}"
     else:
         raise ValueError(f"Invalid model type: {model_type}")
     train_evaluate_model(seed, bert_classifier, use_drug_embeddings, criterion, learning_rate, train_loader,
