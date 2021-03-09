@@ -245,12 +245,12 @@ def train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criteri
             best_epoch = epoch
             torch.save(bert_classifier.state_dict(), save_checkpoint_path)
 
-        print(f'Epoch: {epoch+1:02} | Time: {epoch_mins}m {epoch_secs}s')
+        print(f'Epoch: {epoch + 1:02} | Time: {epoch_mins}m {epoch_secs}s')
         print(f'\tTrain Loss: {train_loss:.3f}')
         print(f'\t Val. Loss: {valid_loss:.3f} |  Val. F1: {valid_f1_score:.3f}')
 
         with codecs.open(train_statistics_path, 'a+', encoding="utf-8") as output_path:
-            output_path.write(f'Epoch: {epoch+1:02} | Time: {epoch_mins}m {epoch_secs}s\n')
+            output_path.write(f'Epoch: {epoch + 1:02} | Time: {epoch_mins}m {epoch_secs}s\n')
             output_path.write(f'\tTrain Loss: {train_loss:.3f}\n')
             output_path.write(f'\t Val. Loss: {valid_loss:.3f} |  Val. F1: {valid_f1_score:.3f}\n')
 
@@ -572,6 +572,7 @@ def main():
     apply_upsampling = config.getboolean("PARAMETERS", "APPLY_UPSAMPLING")
     use_weighted_loss = config.getboolean("PARAMETERS", "USE_WEIGHTED_LOSS")
     loss_weight = config.getfloat("PARAMETERS", "LOSS_WEIGHT")
+    freeze_layer_count = config.getint("PARAMETERS", "FREEZE_ENCODER_LAYERS")
     model_type = config["PARAMETERS"]["MODEL_TYPE"]
     encoder_state_path = config["PARAMETERS"]["ENCODER_STATE_PATH"]
     train_drug_sampling_type = config["PARAMETERS"]["DRUG_SAMPLING"]
@@ -602,8 +603,8 @@ def main():
     test_path = os.path.join(data_dir, "test.tsv")
     dev_path = os.path.join(data_dir, "dev.tsv")
     train_df = pd.read_csv(train_path, sep='\t', )
-    dev_df = pd.read_csv(dev_path, sep='\t',)
-    test_df = pd.read_csv(test_path, sep='\t',)
+    dev_df = pd.read_csv(dev_path, sep='\t', )
+    test_df = pd.read_csv(test_path, sep='\t', )
 
     if drug_embeddings_from == "sider":
         sider_path = config["SIDER"]["EMBS_PATH_GZ"]
@@ -645,6 +646,13 @@ def main():
         f"dev: {dev_df.shape[0]},\n"
         f"test: {test_df.shape[0]}")
     bert_text_encoder = AutoModel.from_pretrained(text_encoder_name, cache_dir="models/")
+    if freeze_layer_count > 0:
+        for layer in bert_text_encoder.encoder.layer[:freeze_layer_count]:
+            for param in layer.parameters():
+                param.requires_grad = False
+        print(bert_text_encoder.encoder.layer)
+    print("#Trainable params: ", sum(p.numel() for p in bert_text_encoder.parameters() if p.requires_grad))
+
     text_tokenizer = AutoTokenizer.from_pretrained(text_encoder_name, cache_dir="models/")
     if encoder_state_path != '-1':
         bert_text_encoder.load_state_dict(torch.load(encoder_state_path))
