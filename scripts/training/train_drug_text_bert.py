@@ -33,7 +33,7 @@ class TweetsDataset(Dataset):
         # TODO
         self.atc_codes_features = None
         if use_atc_codes:
-            self.atc_codes_features = tweets_df.loc[:, "A": "V", ]
+            self.atc_codes_features = tweets_df.loc[:, "A": "V", ].values
         if molecule_tokenizer is not None:
             smiles_list = get_smiles_list(tweets_df.smiles.values)
             self.tokenized_molecules = [molecule_tokenizer.batch_encode_plus(x, max_length=self.molecule_max_length,
