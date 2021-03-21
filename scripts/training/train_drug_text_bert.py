@@ -30,7 +30,6 @@ class TweetsDataset(Dataset):
                                                             padding="max_length", truncation=True,
                                                             return_tensors="pt", ) for x in tweets_df.tweet.values]
         self.tokenized_molecules = None
-        # TODO
         self.atc_codes_features = None
         if use_atc_codes:
             self.atc_codes_features = tweets_df.loc[:, "A": "V", ].values
@@ -123,7 +122,7 @@ def train(model, iterator, optimizer, criterion, use_drug_embeddings=True, cross
             molecule_input_ids = batch["molecule_input_ids"].to(device)
             molecule_attention_mask = batch["molecule_attention_mask"].to(device)
             output = model(text_inputs=input_ids, text_attention_mask=attention_mask,
-                           molecule_inputs=molecule_input_ids,
+                           molecule_inputs=molecule_input_ids, atc_features=atc_features,
                            molecule_attention_mask=molecule_attention_mask).squeeze(1)
         else:
             output = model(inputs=input_ids, attention_mask=attention_mask, ).squeeze(1)
@@ -198,7 +197,7 @@ def evaluate(model, iterator, criterion, use_drug_embeddings, cross_att_flag=Fal
                 molecule_input_ids = batch["molecule_input_ids"].to(device)
                 molecule_attention_mask = batch["molecule_attention_mask"].to(device)
                 output = model(text_inputs=input_ids, text_attention_mask=attention_mask,
-                               molecule_inputs=molecule_input_ids,
+                               molecule_inputs=molecule_input_ids, atc_features=atc_features,
                                molecule_attention_mask=molecule_attention_mask).squeeze(1)
             else:
                 output = model(inputs=input_ids, attention_mask=attention_mask, ).squeeze(1)
@@ -276,7 +275,6 @@ def save_labels_probas(labels_path, probas_path, labels, probas):
             probas_file.write(f"{probability}\n")
 
 
-# TODO
 def train_evaluate_model(seed, bert_classifier, use_drug_embeddings, criterion, learning_rate, train_loader, dev_loader,
                          test_loader, num_epochs, output_evaluation_path, output_model_dir, model_chkpnt_name,
                          cross_att_flag=False, atc_features_size=None):
@@ -351,7 +349,7 @@ def predict(model, data_loader, use_drug_embeddings, cross_att_flag=False, decis
                 molecule_input_ids = batch["molecule_input_ids"].to(device)
                 molecule_attention_mask = batch["molecule_attention_mask"].to(device)
                 batch_pred_probas = model(text_inputs=input_ids, text_attention_mask=attention_mask,
-                                          molecule_inputs=molecule_input_ids,
+                                          molecule_inputs=molecule_input_ids, atc_features=atc_features,
                                           molecule_attention_mask=molecule_attention_mask).squeeze(1)
             else:
                 batch_pred_probas = model(inputs=input_ids, attention_mask=attention_mask, ).squeeze(1)
@@ -400,9 +398,13 @@ class BertClassifierWithDrugEmbeddings(nn.Module):
         bert_hidden_dim = bert_text_encoder.config.hidden_size
         self.atc_features_size = atc_features_size
         self.emb_dropout = nn.Dropout(p=dropout)
+        classifier_input_size = bert_hidden_dim + drug_enc_hid_dim
+        if atc_features_size is not None:
+            classifier_input_size += atc_features_size
+
         self.classifier = nn.Sequential(
             nn.GELU(),
-            nn.Linear(bert_hidden_dim + drug_enc_hid_dim + atc_features_size, bert_hidden_dim),
+            nn.Linear(classifier_input_size, bert_hidden_dim),
             nn.Dropout(p=dropout),
             nn.GELU(),
             nn.Linear(bert_hidden_dim, 1),
@@ -457,27 +459,31 @@ class ConcatDoubleEncoderBertClassifieer(nn.Module):
 
 class CrossModalityBertClassifier(nn.Module):
     def __init__(self, bert_text_encoder, bert_molecule_encoder, classifier_dropout, cross_att_attention_dropout,
-                 cross_att_hidden_dropout):
+                 cross_att_hidden_dropout, atc_features_size=None):
         super().__init__()
 
         self.bert_text_encoder = bert_text_encoder
         self.bert_molecule_encoder = bert_molecule_encoder
+        self.atc_features_size = atc_features_size
         text_bert_hidden_dim = bert_text_encoder.config.hidden_size
         molecule_bert_hidden_dim = bert_molecule_encoder.config.hidden_size
         num_attention_heads = text_bert_hidden_dim // 64
         self.cross_attention_layer = BertCrossattLayer(text_bert_hidden_dim, molecule_bert_hidden_dim,
                                                        cross_att_attention_dropout, cross_att_hidden_dropout,
                                                        num_attention_heads=num_attention_heads)
+        classifier_input_size = text_bert_hidden_dim
+        if atc_features_size is not None:
+            classifier_input_size += atc_features_size
         self.classifier = nn.Sequential(
             nn.Dropout(p=classifier_dropout),
             nn.GELU(),
-            nn.Linear(text_bert_hidden_dim, text_bert_hidden_dim),
+            nn.Linear(classifier_input_size, text_bert_hidden_dim),
             nn.Dropout(p=classifier_dropout),
             nn.GELU(),
             nn.Linear(text_bert_hidden_dim, 1),
         )
 
-    def forward(self, text_inputs, text_attention_mask, molecule_inputs, molecule_attention_mask, ):
+    def forward(self, text_inputs, text_attention_mask, molecule_inputs, molecule_attention_mask, atc_features):
         text_last_hidden_states = self.bert_text_encoder(text_inputs, attention_mask=text_attention_mask,
                                                          return_dict=True)['last_hidden_state']
         # text_cls_embeddings = torch.stack([elem[0, :] for elem in text_last_hidden_states])
@@ -488,6 +494,8 @@ class CrossModalityBertClassifier(nn.Module):
         cross_attention_output = self.cross_attention_layer(input_tensor=text_last_hidden_states,
                                                             ctx_tensor=molecule_last_hidden_states, )
         cross_att_output_cls_embs = torch.stack([elem[0, :] for elem in cross_attention_output])
+        if self.atc_features_size is not None:
+            cross_att_output_cls_embs = torch.cat([cross_att_output_cls_embs, atc_features], dim=1)
         proba = self.classifier(cross_att_output_cls_embs)
         return proba
 
