@@ -774,7 +774,7 @@ def main():
         cross_att_flag = True
         bert_classifier = CrossModalityBertClassifier(bert_text_encoder=bert_text_encoder,
                                                       bert_molecule_encoder=chemberta_model,
-                                                      classifier_dropout=dropout_p,
+                                                      classifier_dropout=dropout_p, atc_features_size=atc_features_size,
                                                       cross_att_attention_dropout=cross_att_attention_dropout,
                                                       cross_att_hidden_dropout=cross_att_hidden_dropout).to(device)
         checkpoint_name = f"{train_type}_freeze{freeze_layer_count}_attention_{text_encoder_name.split('/')[-1]}"
