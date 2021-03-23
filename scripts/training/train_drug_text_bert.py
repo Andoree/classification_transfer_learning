@@ -125,7 +125,7 @@ def train(model, iterator, optimizer, criterion, use_drug_embeddings=True, cross
                            molecule_inputs=molecule_input_ids, atc_features=atc_features,
                            molecule_attention_mask=molecule_attention_mask).squeeze(1)
         else:
-            output = model(inputs=input_ids, attention_mask=attention_mask, ).squeeze(1)
+            output = model(inputs=input_ids, attention_mask=attention_mask, atc_features=atc_features).squeeze(1)
         loss = criterion(output, labels)
         loss.backward()
         optimizer.step()
@@ -200,7 +200,7 @@ def evaluate(model, iterator, criterion, use_drug_embeddings, cross_att_flag=Fal
                                molecule_inputs=molecule_input_ids, atc_features=atc_features,
                                molecule_attention_mask=molecule_attention_mask).squeeze(1)
             else:
-                output = model(inputs=input_ids, attention_mask=attention_mask, ).squeeze(1)
+                output = model(inputs=input_ids, attention_mask=attention_mask, atc_features=atc_features).squeeze(1)
             pred_probas = output.cpu().numpy()
             batch_pred_labels = (pred_probas >= 0.5) * 1
 
@@ -352,7 +352,8 @@ def predict(model, data_loader, use_drug_embeddings, cross_att_flag=False, decis
                                           molecule_inputs=molecule_input_ids, atc_features=atc_features,
                                           molecule_attention_mask=molecule_attention_mask).squeeze(1)
             else:
-                batch_pred_probas = model(inputs=input_ids, attention_mask=attention_mask, ).squeeze(1)
+                batch_pred_probas = model(inputs=input_ids, attention_mask=attention_mask,
+                                          atc_features=atc_features, ).squeeze(1)
 
             batch_pred_probas = batch_pred_probas.cpu().numpy()
 
@@ -365,26 +366,31 @@ def predict(model, data_loader, use_drug_embeddings, cross_att_flag=False, decis
 
 
 class BertSimpleClassifier(nn.Module):
-    def __init__(self, bert_text_encoder, dropout):
+    def __init__(self, bert_text_encoder, dropout, atc_features_size):
         super().__init__()
 
         self.bert_text_encoder = bert_text_encoder
         bert_hidden_dim = bert_text_encoder.config.hidden_size
+        self.atc_features_size = atc_features_size
         self.emb_dropout = nn.Dropout(p=dropout)
+        classifier_input_size = bert_hidden_dim
+        if atc_features_size is not None:
+            classifier_input_size += atc_features_size
         self.classifier = nn.Sequential(
             nn.GELU(),
-            nn.Linear(bert_hidden_dim, bert_hidden_dim),
+            nn.Linear(classifier_input_size, bert_hidden_dim),
             nn.Dropout(p=dropout),
             nn.GELU(),
             nn.Linear(bert_hidden_dim, 1),
         )
 
-    def forward(self, inputs, attention_mask, ):
+    def forward(self, inputs, attention_mask, atc_features=None, ):
         last_hidden_states = self.bert_text_encoder(inputs, attention_mask=attention_mask,
                                                     return_dict=True)['last_hidden_state']
         text_cls_embeddings = torch.stack([elem[0, :] for elem in last_hidden_states])
         text_cls_embeddings = self.emb_dropout(text_cls_embeddings)
-
+        if self.atc_features_size is not None:
+            text_cls_embeddings = torch.cat([text_cls_embeddings, atc_features], dim=1)
         proba = self.classifier(text_cls_embeddings)
         return proba
 
@@ -731,7 +737,8 @@ def main():
     if model_type == "nodrug":
         torch.manual_seed(seed)
         use_drug_embeddings = False
-        bert_classifier = BertSimpleClassifier(bert_text_encoder, dropout=dropout_p).to(device)
+        bert_classifier = BertSimpleClassifier(bert_text_encoder, dropout=dropout_p,
+                                               atc_features_size=atc_features_size).to(device)
         checkpoint_name = f"{train_type}_freeze{freeze_layer_count}_simple_{text_encoder_name.split('/')[-1]}"
     elif model_type == "drug":
         torch.manual_seed(seed)
