@@ -602,6 +602,8 @@ def main():
     num_epochs = config.getint("PARAMETERS", "NUM_EPOCHS")
     text_encoder_name = config.get("PARAMETERS", "TEXT_ENCODER_NAME")
     apply_upsampling = config.getboolean("PARAMETERS", "APPLY_UPSAMPLING")
+    freeze_layer_count = config.getint("PARAMETERS", "FREEZE_LAYER_COUNT")
+    freeze_embeddings_layer = config.getboolean("PARAMETERS", "FREEZE_EMBEDDINGS_LAYER")
     use_weighted_loss = config.getboolean("PARAMETERS", "USE_WEIGHTED_LOSS")
     loss_weight = config.getfloat("PARAMETERS", "LOSS_WEIGHT")
     model_type = config["PARAMETERS"]["MODEL_TYPE"]
@@ -692,103 +694,103 @@ def main():
         sampler = None
         shuffle = True
 
-    setups = ((0, False), (1, False), (5, False), (10, False), (0, True), (1, True), (5, True), (10, True),)
+    #setups = ((0, False), (1, False), (5, False), (10, False), (0, True), (1, True), (5, True), (10, True),)
     seeds_list = [0, 1, 2, 3, 5, 7, 11, 13, 21, 42]
 
-    for i, (freeze_layer_count, freeze_embeddings_layer) in enumerate(setups):
-        setup_path = os.path.join(output_dir, f"exp_{i}/setup_descr.txt")
-        setup_dir = os.path.dirname(setup_path)
-        if not os.path.exists(setup_dir) and setup_dir != '':
-            os.makedirs(setup_dir)
-        write_hyperparams(apply_upsampling, positive_class_weight, num_epochs, dropout_p, freeze_layer_count,
-                          freeze_embeddings_layer, text_encoder_name, setup_path)
-        for seed in seeds_list:
-            experiment_dir = f"exp_{i}/seed_{seed}"
-            experiment_dir = os.path.join(output_dir, experiment_dir)
-            if not os.path.exists(experiment_dir) and experiment_dir != '':
-                os.makedirs(experiment_dir)
+    # for i, (freeze_layer_count, freeze_embeddings_layer) in enumerate(setups):
+    setup_path = os.path.join(output_dir, f"exp_{freeze_embeddings_layer}_{freeze_layer_count}/setup_descr.txt")
+    setup_dir = os.path.dirname(setup_path)
+    if not os.path.exists(setup_dir) and setup_dir != '':
+        os.makedirs(setup_dir)
+    write_hyperparams(apply_upsampling, positive_class_weight, num_epochs, dropout_p, freeze_layer_count,
+                      freeze_embeddings_layer, text_encoder_name, setup_path)
+    for seed in seeds_list:
+        experiment_dir = f"exp_{freeze_embeddings_layer}_{freeze_layer_count}/seed_{seed}"
+        experiment_dir = os.path.join(output_dir, experiment_dir)
+        if not os.path.exists(experiment_dir) and experiment_dir != '':
+            os.makedirs(experiment_dir)
 
-            torch.manual_seed(seed)
-            torch.random.manual_seed(seed)
-            os.environ['PYTHONHASHSEED'] = str(seed)
-            random.seed(seed)
-            np.random.seed(seed)
-            torch.cuda.random.manual_seed(seed)
-            torch.cuda.random.manual_seed_all(seed)
-            torch.backends.cudnn.deterministic = True
+        torch.manual_seed(seed)
+        torch.random.manual_seed(seed)
+        os.environ['PYTHONHASHSEED'] = str(seed)
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.cuda.random.manual_seed(seed)
+        torch.cuda.random.manual_seed_all(seed)
+        torch.backends.cudnn.deterministic = True
 
-            bert_text_encoder = AutoModel.from_pretrained(text_encoder_name, cache_dir="models/")
+        bert_text_encoder = AutoModel.from_pretrained(text_encoder_name, cache_dir="models/")
 
-            if freeze_layer_count > 0:
-                for layer in bert_text_encoder.encoder.layer[:freeze_layer_count]:
-                    for param in layer.parameters():
-                        param.requires_grad = False
-
-            if freeze_embeddings_layer:
-                for param in bert_text_encoder.embeddings.parameters():
+        if freeze_layer_count > 0:
+            for layer in bert_text_encoder.encoder.layer[:freeze_layer_count]:
+                for param in layer.parameters():
                     param.requires_grad = False
-            print("#Trainable params: ", sum(p.numel() for p in bert_text_encoder.parameters() if p.requires_grad))
 
-            num_workers = 2
+        if freeze_embeddings_layer:
+            for param in bert_text_encoder.embeddings.parameters():
+                param.requires_grad = False
+        print("#Trainable params: ", sum(p.numel() for p in bert_text_encoder.parameters() if p.requires_grad))
 
-            train_loader = torch.utils.data.DataLoader(
-                train_tweets_dataset, batch_size=batch_size, num_workers=num_workers, sampler=sampler, shuffle=shuffle,
-                drop_last=True,
-            )
-            dev_loader = torch.utils.data.DataLoader(
-                dev_tweets_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
-            )
-            test_loader = torch.utils.data.DataLoader(
-                test_tweets_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
-            )
-            cross_att_flag = False
+        num_workers = 2
 
-            torch.manual_seed(seed)
-            use_drug_embeddings = False
-            bert_classifier = BertSimpleClassifier(bert_text_encoder, dropout=dropout_p,
-                                                   atc_features_size=atc_features_size).to(device)
-            checkpoint_name = f"simple_{text_encoder_name.split('/')[-1]}"
+        train_loader = torch.utils.data.DataLoader(
+            train_tweets_dataset, batch_size=batch_size, num_workers=num_workers, sampler=sampler, shuffle=shuffle,
+            drop_last=True,
+        )
+        dev_loader = torch.utils.data.DataLoader(
+            dev_tweets_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
+        )
+        test_loader = torch.utils.data.DataLoader(
+            test_tweets_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
+        )
+        cross_att_flag = False
 
-            train_evaluate_model(seed, bert_classifier, use_drug_embeddings, criterion, learning_rate, train_loader,
-                                 dev_loader, test_loader, num_epochs, output_evaluation_path, output_dir,
-                                 checkpoint_name,
-                                 cross_att_flag=cross_att_flag, atc_features_size=atc_features_size)
+        torch.manual_seed(seed)
+        use_drug_embeddings = False
+        bert_classifier = BertSimpleClassifier(bert_text_encoder, dropout=dropout_p,
+                                               atc_features_size=atc_features_size).to(device)
+        checkpoint_name = f"simple_{text_encoder_name.split('/')[-1]}"
 
-            true_labels, dev_pred_labels, dev_pred_probas = predict(bert_classifier, dev_loader, use_drug_embeddings)
-            assert len(dev_pred_labels) == len(true_labels)
-            assert len(dev_pred_labels) == len(dev_pred_probas)
-            dev_precision = precision_score(true_labels, dev_pred_labels)
-            dev_recall = recall_score(true_labels, dev_pred_labels)
-            dev_f1 = f1_score(true_labels, dev_pred_labels)
+        train_evaluate_model(seed, bert_classifier, use_drug_embeddings, criterion, learning_rate, train_loader,
+                             dev_loader, test_loader, num_epochs, output_evaluation_path, output_dir,
+                             checkpoint_name,
+                             cross_att_flag=cross_att_flag, atc_features_size=atc_features_size)
 
-            print(f"{dev_precision},{dev_recall},{dev_f1}")
+        true_labels, dev_pred_labels, dev_pred_probas = predict(bert_classifier, dev_loader, use_drug_embeddings)
+        assert len(dev_pred_labels) == len(true_labels)
+        assert len(dev_pred_labels) == len(dev_pred_probas)
+        dev_precision = precision_score(true_labels, dev_pred_labels)
+        dev_recall = recall_score(true_labels, dev_pred_labels)
+        dev_f1 = f1_score(true_labels, dev_pred_labels)
 
-            true_labels, test_pred_labels, test_pred_probas = predict(bert_classifier, test_loader, use_drug_embeddings)
-            assert len(test_pred_labels) == len(true_labels)
-            assert len(test_pred_labels) == len(test_pred_probas)
-            test_precision = precision_score(true_labels, test_pred_labels)
-            test_recall = recall_score(true_labels, test_pred_labels)
-            test_f1 = f1_score(true_labels, test_pred_labels)
-            print(f"{test_precision},{test_recall},{test_f1}")
+        print(f"{dev_precision},{dev_recall},{dev_f1}")
 
-            exp_scores_path = os.path.join(experiment_dir, "scores.txt")
-            with codecs.open(exp_scores_path, 'a+', encoding="utf-8") as out_file:
-                out_file.write(
-                    f"{seed},{dev_precision},{dev_recall},{dev_f1},{test_precision},{test_recall},{test_f1}\n")
+        true_labels, test_pred_labels, test_pred_probas = predict(bert_classifier, test_loader, use_drug_embeddings)
+        assert len(test_pred_labels) == len(true_labels)
+        assert len(test_pred_labels) == len(test_pred_probas)
+        test_precision = precision_score(true_labels, test_pred_labels)
+        test_recall = recall_score(true_labels, test_pred_labels)
+        test_f1 = f1_score(true_labels, test_pred_labels)
+        print(f"{test_precision},{test_recall},{test_f1}")
 
-            dev_labels_path = os.path.join(experiment_dir, "dev_labels.txt")
-            dev_probas_path = os.path.join(experiment_dir, "dev_probas.txt")
-            test_labels_path = os.path.join(experiment_dir, "test_labels.txt")
-            test_probas_path = os.path.join(experiment_dir, "test_probas.txt")
+        exp_scores_path = os.path.join(experiment_dir, "scores.txt")
+        with codecs.open(exp_scores_path, 'a+', encoding="utf-8") as out_file:
+            out_file.write(
+                f"{seed},{dev_precision},{dev_recall},{dev_f1},{test_precision},{test_recall},{test_f1}\n")
 
-            save_labels_probas(dev_labels_path, dev_probas_path, dev_pred_labels, dev_pred_probas)
-            save_labels_probas(test_labels_path, test_probas_path, test_pred_labels, test_pred_probas)
+        dev_labels_path = os.path.join(experiment_dir, "dev_labels.txt")
+        dev_probas_path = os.path.join(experiment_dir, "dev_probas.txt")
+        test_labels_path = os.path.join(experiment_dir, "test_labels.txt")
+        test_probas_path = os.path.join(experiment_dir, "test_probas.txt")
 
-            bert_classifier = bert_classifier.cpu()
-            bert_text_encoder = bert_text_encoder.cpu()
-            del bert_classifier
-            del bert_text_encoder
-            del criterion
+        save_labels_probas(dev_labels_path, dev_probas_path, dev_pred_labels, dev_pred_probas)
+        save_labels_probas(test_labels_path, test_probas_path, test_pred_labels, test_pred_probas)
+
+        bert_classifier = bert_classifier.cpu()
+        bert_text_encoder = bert_text_encoder.cpu()
+        del bert_classifier
+        del bert_text_encoder
+        del criterion
 
 
 if __name__ == '__main__':
