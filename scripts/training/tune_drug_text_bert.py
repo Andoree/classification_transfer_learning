@@ -152,7 +152,7 @@ def encode_smiles(model, tokenizer, smiles_list, max_length, molecules_sep='~~~'
     with torch.no_grad():
         model_hidden_size = model.config.hidden_size
         molecules_embeddings = []
-        for sample in tqdm(smiles_list):
+        for sample in tqdm(smiles_list, mininterval=7.0):
             sample_embeddings = []
             if sample is not np.nan:
                 molecules_smiles = sample.split(molecules_sep)
@@ -277,7 +277,7 @@ def save_labels_probas(labels_path, probas_path, labels, probas):
 
 def write_hyperparams(apply_upsampling, positive_class_weight, n_epochs, dropout, freeze_layer_count,
                       freeze_embeddings_layer, text_model_name, output_path):
-    with codecs.open(output_path, 'r', encoding="utf-8") as out_file:
+    with codecs.open(output_path, 'w+', encoding="utf-8") as out_file:
         out_file.write(f"model name: {text_model_name}\n")
         out_file.write(f"Upsampling: {apply_upsampling}\nUpsampling_weight: {positive_class_weight}\n")
         out_file.write(f"n_epochs: {n_epochs}\ndropout: {dropout}\n")
