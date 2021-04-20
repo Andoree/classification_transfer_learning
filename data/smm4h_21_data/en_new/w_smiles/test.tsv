@@ -1,4 +1,4 @@
-tweet_id	tweet	label	drug_en_name	drug_id	smiles	A	B	C	D	G	H	J	L	M	N	P	R	S	V
+tweet_id	tweet	class	drug_en_name	drug_id	smiles	A	B	C	D	G	H	J	L	M	N	P	R	S	V
 924202174481162243	Amphetamines,Phenylethylamine,serotonin,Tryptophan,7sha Tattoos mb Chemical compounds.	0	amphetamines~serotonin~tryptophan	DB00182~DB08839~DB00150	CC(N)CC1=CC=CC=C1~~~NCCC1=CNC2=CC=C(O)C=C12~~~N[C@@H](CC1=CNC2=C1C=CC=C2)C(O)=O	0	0	0	0	0	0	0	0	0	1	0	0	0	0
 1065029162904182785	Albuterol or prednisone?	0	albuterol~prednisone	DB01001~DB00898	CC(C)(C)NCC(O)C1=CC(CO)=C(O)C=C1~~~CCO	0	0	0	1	0	0	0	0	0	0	0	1	0	1
 487283084916572161	@username Flovent is that stress nigga I use it	0	flovent	DB00588	[H][C@@]12C[C@@H](C)[C@](OC(=O)CC)(C(=O)SCF)[C@@]1(C)C[C@H](O)[C@@]1(F)[C@@]2([H])C[C@H](F)C2=CC(=O)C=C[C@]12C	0	0	0	0	0	0	0	0	0	0	0	0	0	0
