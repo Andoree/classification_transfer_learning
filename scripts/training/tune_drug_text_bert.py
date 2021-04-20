@@ -592,7 +592,7 @@ def get_sider_emb_by_drugbank_id(drugbank_ids, sider_embs, drugs_sep='~', emb_si
 
 def main():
     config = configparser.ConfigParser()
-    config.read("train_config.ini")
+    config.read("tune_config.ini")
     drug_embeddings_from = config["INPUT"]["DRUG_EMBEDDINGS_FROM"]
     max_length = config.getint("PARAMETERS", "MAX_TEXT_LENGTH")
     max_chemberta_length = config.getint("PARAMETERS", "MAX_MOLECULE_LENGTH")
@@ -697,6 +697,9 @@ def main():
 
     for i, (freeze_layer_count, freeze_embeddings_layer) in enumerate(setups):
         setup_path = os.path.join(output_dir, f"exp_{i}/setup_descr.txt")
+        setup_dir = os.path.dirname(setup_path)
+        if not os.path.exists(setup_dir) and setup_dir != '':
+            os.makedirs(setup_dir)
         write_hyperparams(apply_upsampling, positive_class_weight, num_epochs, dropout_p, freeze_layer_count,
                           freeze_embeddings_layer, text_encoder_name, setup_path)
         for seed in seeds_list:
