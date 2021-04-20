@@ -610,7 +610,7 @@ def main():
     use_atc_codes = False
 
     output_dir = config["OUTPUT"]["OUTPUT_DIR"]
-    output_dir = os.path.join(output_dir, f"seed_{seed}")
+    # output_dir = os.path.join(output_dir, f"seed_{seed}")
     if not os.path.exists(output_dir) and output_dir != '':
         os.makedirs(output_dir)
     output_evaluation_filename = config["OUTPUT"]["EVALUATION_FILENAME"]
