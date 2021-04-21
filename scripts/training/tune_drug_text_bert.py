@@ -13,7 +13,7 @@ from sklearn.metrics import precision_score, f1_score, recall_score
 from torch import nn
 from torch.utils.data import Dataset
 from tqdm import tqdm
-from transformers import AutoModel, RobertaModel
+from transformers import AutoModel, RobertaModel, PreTrainedTokenizerFast
 from transformers import AutoTokenizer
 
 device = "cuda" if torch.cuda.is_available else "cpu"
@@ -644,8 +644,8 @@ def main():
     if drug_embeddings_from == "chemberta":
         chemberta_model = RobertaModel.from_pretrained("./models/seyonec/ChemBERTa_zinc250k_v2_40k/model",).to(
            device)
-        tokenizer = AutoTokenizer.from_pretrained("./models/seyonec/ChemBERTa_zinc250k_v2_40k/tokenizer", )
-
+        tokenizer = AutoTokenizer.from_pretrained("./models/seyonec/ChemBERTa_zinc250k_v2_40k/model", )
+        #tokenizer = AutoTokenizer.from_pretrained("ChemBERTa_zinc250k_v2_40k", )
 
         train_df["drug_embedding"] = encode_smiles(model=chemberta_model, tokenizer=tokenizer,
                                                    smiles_list=train_df.smiles.values,
@@ -673,7 +673,7 @@ def main():
         criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(device)
     else:
         criterion = nn.BCEWithLogitsLoss().to(device)
-    text_tokenizer = AutoTokenizer.from_pretrained(f"./models/{text_encoder_name}/tokenizer",)
+    text_tokenizer = AutoTokenizer.from_pretrained(f"./models/{text_encoder_name}/model",)
     chemberta_tokenizer = None
 
     train_tweets_dataset = TweetsDataset(train_df, text_tokenizer, text_max_length=max_length,
@@ -733,7 +733,7 @@ def main():
                 param.requires_grad = False
         print("#Trainable params: ", sum(p.numel() for p in bert_text_encoder.parameters() if p.requires_grad))
 
-        num_workers = 2
+        num_workers = 4
 
         train_loader = torch.utils.data.DataLoader(
             train_tweets_dataset, batch_size=batch_size, num_workers=num_workers, sampler=sampler, shuffle=shuffle,
