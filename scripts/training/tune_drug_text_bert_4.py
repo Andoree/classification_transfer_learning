@@ -2,13 +2,17 @@ import codecs
 import configparser
 import os
 import random
+import re
 import time
+from typing import Set
 
+import nltk
 import numpy as np
 import pandas as pd
 import torch
 import torch.optim as optim
 from attention import BertCrossattLayer
+from natasha import Segmenter, Doc
 from sklearn.metrics import precision_score, f1_score, recall_score
 from torch import nn
 from torch.utils.data import Dataset
@@ -17,6 +21,40 @@ from transformers import AutoModel, RobertaModel
 from transformers import AutoTokenizer
 
 device = "cuda" if torch.cuda.is_available else "cpu"
+
+
+def mask_drug(text: str, drugs_set: Set[str], drug_mask: str = "[DRUG]"):
+    """
+    :param text: Raw tweet string
+    :param drugs_set: Set of possible forms of drug mentions
+    :param drug_mask: Mask to replace drug mentions with
+    :return: Tweet string with masked drug mentions
+    """
+    ru_letters = set("абвгдеёжзийклмнопрстуфхцчъыьэюя")
+    en_letters = set('abcdefghijklmnopqrstuvwxyz')
+    ru_counter = 0
+    en_counter = 0
+    for char in text:
+        if char in ru_letters:
+            ru_counter += 1
+        elif char in en_letters:
+            en_counter += 1
+    if ru_counter > en_counter:
+        segmenter = Segmenter()
+        natasha_doc = Doc(text)
+        natasha_doc.segment(segmenter)
+        tokens = [token.text for token in natasha_doc.tokens]
+    else:
+        tokens = nltk.word_tokenize(text)
+    replace_tokens = []
+    for token in tokens:
+        if token in drugs_set:
+            replace_tokens.append(token)
+    replace_tokens.sort(key=lambda t: -len(t), )
+    for token in replace_tokens:
+        re.sub(token, drug_mask, text, flags=re.IGNORECASE)
+
+    return text
 
 
 class TweetsDataset(Dataset):
@@ -642,8 +680,8 @@ def main():
         atc_features_size = train_df.loc[:, "A": "V", ].shape[1]
 
     if drug_embeddings_from == "chemberta":
-        chemberta_model = RobertaModel.from_pretrained("./models/seyonec/ChemBERTa_zinc250k_v2_40k/model",).to(
-           device)
+        chemberta_model = RobertaModel.from_pretrained("./models/seyonec/ChemBERTa_zinc250k_v2_40k/model", ).to(
+            device)
         tokenizer = AutoTokenizer.from_pretrained("./models/seyonec/ChemBERTa_zinc250k_v2_40k/model", )
         train_df["drug_embedding"] = encode_smiles(model=chemberta_model, tokenizer=tokenizer,
                                                    smiles_list=train_df.smiles.values,
@@ -671,7 +709,7 @@ def main():
         criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(device)
     else:
         criterion = nn.BCEWithLogitsLoss().to(device)
-    text_tokenizer = AutoTokenizer.from_pretrained(f"./models/{text_encoder_name}/model",)
+    text_tokenizer = AutoTokenizer.from_pretrained(f"./models/{text_encoder_name}/model", )
     chemberta_tokenizer = None
 
     train_tweets_dataset = TweetsDataset(train_df, text_tokenizer, text_max_length=max_length,
@@ -747,10 +785,11 @@ def main():
         use_drug_embeddings = False
         bert_classifier = BertSimpleClassifier(bert_text_encoder, dropout=dropout_p,
                                                atc_features_size=atc_features_size).to(device)
-        checkpoint_name = f"exp_{freeze_embeddings_layer}_{freeze_layer_count}/simple_{text_encoder_name.split('/')[-1]}"
+        checkpoint_name = f"simple_{text_encoder_name.split('/')[-1]}"
+        model_save_dir = os.path.join(output_dir, f"exp_{freeze_embeddings_layer}_{freeze_layer_count}/")
 
         train_evaluate_model(seed, bert_classifier, use_drug_embeddings, criterion, learning_rate, train_loader,
-                             dev_loader, test_loader, num_epochs, output_evaluation_path, output_dir,
+                             dev_loader, test_loader, num_epochs, output_evaluation_path, model_save_dir,
                              checkpoint_name,
                              cross_att_flag=cross_att_flag, atc_features_size=atc_features_size)
 
@@ -788,7 +827,6 @@ def main():
         bert_text_encoder = bert_text_encoder.cpu()
         del bert_classifier
         del bert_text_encoder
-
 
 
 if __name__ == '__main__':

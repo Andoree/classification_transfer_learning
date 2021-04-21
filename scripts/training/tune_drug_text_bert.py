@@ -785,10 +785,11 @@ def main():
         use_drug_embeddings = False
         bert_classifier = BertSimpleClassifier(bert_text_encoder, dropout=dropout_p,
                                                atc_features_size=atc_features_size).to(device)
-        checkpoint_name = f"exp_{freeze_embeddings_layer}_{freeze_layer_count}/simple_{text_encoder_name.split('/')[-1]}"
+        checkpoint_name = f"simple_{text_encoder_name.split('/')[-1]}"
+        model_save_dir = os.path.join(output_dir, f"exp_{freeze_embeddings_layer}_{freeze_layer_count}/")
 
         train_evaluate_model(seed, bert_classifier, use_drug_embeddings, criterion, learning_rate, train_loader,
-                             dev_loader, test_loader, num_epochs, output_evaluation_path, output_dir,
+                             dev_loader, test_loader, num_epochs, output_evaluation_path, model_save_dir,
                              checkpoint_name,
                              cross_att_flag=cross_att_flag, atc_features_size=atc_features_size)
 
