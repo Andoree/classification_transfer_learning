@@ -642,9 +642,11 @@ def main():
         atc_features_size = train_df.loc[:, "A": "V", ].shape[1]
 
     if drug_embeddings_from == "chemberta":
-        chemberta_model = RobertaModel.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="/home/etutubalina/classification_transfer_learning/scripts/training/models/").to(
-            device)
-        tokenizer = AutoTokenizer.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="/home/etutubalina/classification_transfer_learning/scripts/training/models/")
+        chemberta_model = RobertaModel.from_pretrained("./models/seyonec/ChemBERTa_zinc250k_v2_40k/model",).to(
+           device)
+        tokenizer = AutoTokenizer.from_pretrained("./models/seyonec/ChemBERTa_zinc250k_v2_40k/tokenizer", )
+
+
         train_df["drug_embedding"] = encode_smiles(model=chemberta_model, tokenizer=tokenizer,
                                                    smiles_list=train_df.smiles.values,
                                                    max_length=max_chemberta_length, )
@@ -671,7 +673,7 @@ def main():
         criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(device)
     else:
         criterion = nn.BCEWithLogitsLoss().to(device)
-    text_tokenizer = AutoTokenizer.from_pretrained(text_encoder_name, cache_dir="/home/etutubalina/classification_transfer_learning/scripts/training/models/")
+    text_tokenizer = AutoTokenizer.from_pretrained(f"./models/{text_encoder_name}/tokenizer",)
     chemberta_tokenizer = None
 
     train_tweets_dataset = TweetsDataset(train_df, text_tokenizer, text_max_length=max_length,
@@ -719,7 +721,7 @@ def main():
         torch.cuda.random.manual_seed_all(seed)
         torch.backends.cudnn.deterministic = True
 
-        bert_text_encoder = AutoModel.from_pretrained(text_encoder_name, cache_dir="/home/etutubalina/classification_transfer_learning/scripts/training/models/")
+        bert_text_encoder = AutoModel.from_pretrained(f"./models/{text_encoder_name}/model", )
 
         if freeze_layer_count > 0:
             for layer in bert_text_encoder.encoder.layer[:freeze_layer_count]:
