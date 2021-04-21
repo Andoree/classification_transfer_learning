@@ -592,7 +592,7 @@ def get_sider_emb_by_drugbank_id(drugbank_ids, sider_embs, drugs_sep='~', emb_si
 
 def main():
     config = configparser.ConfigParser()
-    config.read("tune_config_3.ini")
+    config.read("tune_config_7.ini")
     drug_embeddings_from = config["INPUT"]["DRUG_EMBEDDINGS_FROM"]
     max_length = config.getint("PARAMETERS", "MAX_TEXT_LENGTH")
     max_chemberta_length = config.getint("PARAMETERS", "MAX_MOLECULE_LENGTH")
@@ -619,7 +619,7 @@ def main():
     output_evaluation_path = os.path.join(output_dir, output_evaluation_filename)
     if apply_upsampling and use_weighted_loss:
         raise AssertionError(f"You can use only either weighted loss or upsampling")
-    # TODO: Возможно, для роберты ломается аттеншн? Но пока дело не в этом
+
     seed = 42
     torch.manual_seed(seed)
     torch.random.manual_seed(seed)
@@ -642,9 +642,9 @@ def main():
         atc_features_size = train_df.loc[:, "A": "V", ].shape[1]
 
     if drug_embeddings_from == "chemberta":
-        chemberta_model = RobertaModel.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="/home/etutubalina/classification_transfer_learning/scripts/training/models/").to(
-            device)
-        tokenizer = AutoTokenizer.from_pretrained("seyonec/ChemBERTa_zinc250k_v2_40k", cache_dir="/home/etutubalina/classification_transfer_learning/scripts/training/models/")
+        chemberta_model = RobertaModel.from_pretrained("./models/seyonec/ChemBERTa_zinc250k_v2_40k/model",).to(
+           device)
+        tokenizer = AutoTokenizer.from_pretrained("./models/seyonec/ChemBERTa_zinc250k_v2_40k/model", )
         train_df["drug_embedding"] = encode_smiles(model=chemberta_model, tokenizer=tokenizer,
                                                    smiles_list=train_df.smiles.values,
                                                    max_length=max_chemberta_length, )
@@ -671,7 +671,7 @@ def main():
         criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(device)
     else:
         criterion = nn.BCEWithLogitsLoss().to(device)
-    text_tokenizer = AutoTokenizer.from_pretrained(text_encoder_name, cache_dir="/home/etutubalina/classification_transfer_learning/scripts/training/models/")
+    text_tokenizer = AutoTokenizer.from_pretrained(f"./models/{text_encoder_name}/model",)
     chemberta_tokenizer = None
 
     train_tweets_dataset = TweetsDataset(train_df, text_tokenizer, text_max_length=max_length,
@@ -694,10 +694,8 @@ def main():
         sampler = None
         shuffle = True
 
-    #setups = ((0, False), (1, False), (5, False), (10, False), (0, True), (1, True), (5, True), (10, True),)
     seeds_list = [0, 1, 2, 3, 5, 7, 11, 13, 21, 42]
 
-    # for i, (freeze_layer_count, freeze_embeddings_layer) in enumerate(setups):
     setup_path = os.path.join(output_dir, f"exp_{freeze_embeddings_layer}_{freeze_layer_count}/setup_descr.txt")
     setup_dir = os.path.dirname(setup_path)
     if not os.path.exists(setup_dir) and setup_dir != '':
@@ -719,7 +717,7 @@ def main():
         torch.cuda.random.manual_seed_all(seed)
         torch.backends.cudnn.deterministic = True
 
-        bert_text_encoder = AutoModel.from_pretrained(text_encoder_name, cache_dir="/home/etutubalina/classification_transfer_learning/scripts/training/models/")
+        bert_text_encoder = AutoModel.from_pretrained(f"./models/{text_encoder_name}/model", )
 
         if freeze_layer_count > 0:
             for layer in bert_text_encoder.encoder.layer[:freeze_layer_count]:
@@ -731,7 +729,7 @@ def main():
                 param.requires_grad = False
         print("#Trainable params: ", sum(p.numel() for p in bert_text_encoder.parameters() if p.requires_grad))
 
-        num_workers = 2
+        num_workers = 4
 
         train_loader = torch.utils.data.DataLoader(
             train_tweets_dataset, batch_size=batch_size, num_workers=num_workers, sampler=sampler, shuffle=shuffle,
@@ -790,7 +788,7 @@ def main():
         bert_text_encoder = bert_text_encoder.cpu()
         del bert_classifier
         del bert_text_encoder
-        del criterion
+
 
 
 if __name__ == '__main__':

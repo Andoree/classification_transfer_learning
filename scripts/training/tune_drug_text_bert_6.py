@@ -592,7 +592,7 @@ def get_sider_emb_by_drugbank_id(drugbank_ids, sider_embs, drugs_sep='~', emb_si
 
 def main():
     config = configparser.ConfigParser()
-    config.read("tune_config.ini")
+    config.read("tune_config_6.ini")
     drug_embeddings_from = config["INPUT"]["DRUG_EMBEDDINGS_FROM"]
     max_length = config.getint("PARAMETERS", "MAX_TEXT_LENGTH")
     max_chemberta_length = config.getint("PARAMETERS", "MAX_MOLECULE_LENGTH")
