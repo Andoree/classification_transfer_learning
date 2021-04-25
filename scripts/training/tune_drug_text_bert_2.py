@@ -650,7 +650,6 @@ def main():
     use_atc_codes = False
 
     output_dir = config["OUTPUT"]["OUTPUT_DIR"]
-    # output_dir = os.path.join(output_dir, f"seed_{seed}")
     if not os.path.exists(output_dir) and output_dir != '':
         os.makedirs(output_dir)
     output_evaluation_filename = config["OUTPUT"]["EVALUATION_FILENAME"]
@@ -698,13 +697,14 @@ def main():
         f"Datasets sizes: mono_train {train_df.shape[0]},\n"
         f"dev: {dev_df.shape[0]},\n"
         f"test: {test_df.shape[0]}")
-
+    exp_description = f""
     if use_weighted_loss:
         if loss_weight < 0:
             pos_weight = [get_positive_class_loss_weight(train_df, ), ]
         else:
             pos_weight = [loss_weight, ]
         print("pos_weight", pos_weight)
+        exp_description = f"_weighted_loss_{pos_weight}"
         pos_weight = torch.FloatTensor(pos_weight).to(device)
         criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(device)
     else:
@@ -721,7 +721,9 @@ def main():
     test_tweets_dataset = TweetsDataset(test_df, text_tokenizer, text_max_length=max_length,
                                         molecule_tokenizer=chemberta_tokenizer, use_atc_codes=use_atc_codes, )
     if apply_upsampling:
+
         positive_class_weight = config.getfloat("UPSAMPLING", "UPSAMPLING_WEIGHT")
+        exp_description = f"_upsampling_{positive_class_weight}"
         train_weights = create_dataset_weights(train_tweets_dataset, positive_class_weight)
         print("Sampling weights:", set(train_weights))
         train_weights = torch.DoubleTensor(train_weights)
@@ -734,14 +736,15 @@ def main():
 
     seeds_list = [0, 1, 2, 3, 5, 7, 11, 13, 21, 42]
 
-    setup_path = os.path.join(output_dir, f"exp_{freeze_embeddings_layer}_{freeze_layer_count}/setup_descr.txt")
+    setup_path = os.path.join(output_dir,
+                              f"exp_{freeze_embeddings_layer}_{freeze_layer_count}{exp_description}/setup_descr.txt")
     setup_dir = os.path.dirname(setup_path)
     if not os.path.exists(setup_dir) and setup_dir != '':
         os.makedirs(setup_dir)
     write_hyperparams(apply_upsampling, positive_class_weight, num_epochs, dropout_p, freeze_layer_count,
                       freeze_embeddings_layer, text_encoder_name, setup_path)
     for seed in seeds_list:
-        experiment_dir = f"exp_{freeze_embeddings_layer}_{freeze_layer_count}/seed_{seed}"
+        experiment_dir = f"exp_{freeze_embeddings_layer}_{freeze_layer_count}{exp_description}/seed_{seed}"
         experiment_dir = os.path.join(output_dir, experiment_dir)
         if not os.path.exists(experiment_dir) and experiment_dir != '':
             os.makedirs(experiment_dir)
@@ -786,8 +789,8 @@ def main():
         bert_classifier = BertSimpleClassifier(bert_text_encoder, dropout=dropout_p,
                                                atc_features_size=atc_features_size).to(device)
         checkpoint_name = f"simple_{text_encoder_name.split('/')[-1]}"
-        model_save_dir = os.path.join(output_dir, f"exp_{freeze_embeddings_layer}_{freeze_layer_count}/")
-
+        model_save_dir = os.path.join(output_dir,
+                                      f"exp_{freeze_embeddings_layer}_{freeze_layer_count}{exp_description}/")
         train_evaluate_model(seed, bert_classifier, use_drug_embeddings, criterion, learning_rate, train_loader,
                              dev_loader, test_loader, num_epochs, output_evaluation_path, model_save_dir,
                              checkpoint_name,
