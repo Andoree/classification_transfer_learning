@@ -23,7 +23,7 @@ from transformers import AutoTokenizer
 device = "cuda" if torch.cuda.is_available else "cpu"
 
 
-def mask_drug(text: str, drugs_set: Set[str], drug_mask: str = "[DRUG]"):
+def mask_drug(text: str, drugs_set: Set[str], drug_mask: str = "DRUG"):
     """
     :param text: Raw tweet string
     :param drugs_set: Set of possible forms of drug mentions
@@ -46,27 +46,31 @@ def mask_drug(text: str, drugs_set: Set[str], drug_mask: str = "[DRUG]"):
         tokens = [token.text for token in natasha_doc.tokens]
     else:
         tokens = nltk.word_tokenize(text)
+
     replace_tokens = []
     for token in tokens:
-        if token in drugs_set:
+        if token.lower() in drugs_set:
             replace_tokens.append(token)
     replace_tokens.sort(key=lambda t: -len(t), )
     for token in replace_tokens:
-        re.sub(token, drug_mask, text, flags=re.IGNORECASE)
+        text = re.sub(token, drug_mask, text, flags=re.IGNORECASE)
 
     return text
 
 
 class TweetsDataset(Dataset):
     def __init__(self, tweets_df, text_tokenizer, molecule_tokenizer=None, molecule_max_length=256,
-                 text_max_length=128, sampling_type="first", use_atc_codes=False):
+                 text_max_length=128, sampling_type="first", use_atc_codes=False, drugs_dictionary=None):
         self.labels = tweets_df["class"].astype(np.float32).values
         self.text_max_length = text_max_length
         self.sampling_type = sampling_type
         self.molecule_max_length = molecule_max_length
+        tweets = tweets_df.tweet.values
+        if drugs_dictionary is not None:
+            tweets = [mask_drug(text, drugs_set=drugs_dictionary, ) for text in tweets]
         self.tokenized_tweets = [text_tokenizer.encode_plus(x, max_length=self.text_max_length,
                                                             padding="max_length", truncation=True,
-                                                            return_tensors="pt", ) for x in tweets_df.tweet.values]
+                                                            return_tensors="pt", ) for x in tweets]
         self.tokenized_molecules = None
         self.atc_codes_features = None
         if use_atc_codes:
@@ -628,9 +632,17 @@ def get_sider_emb_by_drugbank_id(drugbank_ids, sider_embs, drugs_sep='~', emb_si
     return embedding
 
 
+def load_drugs_dict(dict_path):
+    drugs = set()
+    with codecs.open(dict_path, 'r', encoding="utf-8") as inp_file:
+        for line in inp_file:
+            drugs.add(line.strip())
+    return drugs
+
+
 def main():
     config = configparser.ConfigParser()
-    config.read("tune_config.ini")
+    config.read("tune_config_2.ini")
     drug_embeddings_from = config["INPUT"]["DRUG_EMBEDDINGS_FROM"]
     max_length = config.getint("PARAMETERS", "MAX_TEXT_LENGTH")
     max_chemberta_length = config.getint("PARAMETERS", "MAX_MOLECULE_LENGTH")
@@ -645,12 +657,12 @@ def main():
     use_weighted_loss = config.getboolean("PARAMETERS", "USE_WEIGHTED_LOSS")
     loss_weight = config.getfloat("PARAMETERS", "LOSS_WEIGHT")
     model_type = config["PARAMETERS"]["MODEL_TYPE"]
+    mask_drug_flag = config.get("PARAMETERS", "MASK_DRUG")
     train_drug_sampling_type = config["PARAMETERS"]["DRUG_SAMPLING"]
     # use_atc_codes = config.getboolean("PARAMETERS", "USE_ATC_CODES")
     use_atc_codes = False
 
     output_dir = config["OUTPUT"]["OUTPUT_DIR"]
-    # output_dir = os.path.join(output_dir, f"seed_{seed}")
     if not os.path.exists(output_dir) and output_dir != '':
         os.makedirs(output_dir)
     output_evaluation_filename = config["OUTPUT"]["EVALUATION_FILENAME"]
@@ -668,6 +680,7 @@ def main():
     torch.cuda.random.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
     data_dir = config["INPUT"]["INPUT_DIR"]
+    exp_description = f""
 
     train_path = os.path.join(data_dir, "train.tsv")
     test_path = os.path.join(data_dir, "test.tsv")
@@ -678,6 +691,11 @@ def main():
     atc_features_size = None
     if use_atc_codes:
         atc_features_size = train_df.loc[:, "A": "V", ].shape[1]
+    drugs_dictionary = None
+    if mask_drug_flag:
+        exp_description += "_masking"
+        drugs_dict_path = config["PARAMETERS"]["DRUG_DICT_PATH"]
+        drugs_dictionary = load_drugs_dict(drugs_dict_path)
 
     if drug_embeddings_from == "chemberta":
         chemberta_model = RobertaModel.from_pretrained("./models/seyonec/ChemBERTa_zinc250k_v2_40k/model", ).to(
@@ -705,6 +723,7 @@ def main():
         else:
             pos_weight = [loss_weight, ]
         print("pos_weight", pos_weight)
+        exp_description += f"_weighted_loss_{pos_weight}"
         pos_weight = torch.FloatTensor(pos_weight).to(device)
         criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(device)
     else:
@@ -713,15 +732,19 @@ def main():
     chemberta_tokenizer = None
 
     train_tweets_dataset = TweetsDataset(train_df, text_tokenizer, text_max_length=max_length,
-                                         use_atc_codes=use_atc_codes,
+                                         use_atc_codes=use_atc_codes, drugs_dictionary=drugs_dictionary,
                                          molecule_tokenizer=chemberta_tokenizer,
                                          sampling_type=train_drug_sampling_type)
     dev_tweets_dataset = TweetsDataset(dev_df, text_tokenizer, text_max_length=max_length,
-                                       molecule_tokenizer=chemberta_tokenizer, use_atc_codes=use_atc_codes, )
+                                       drugs_dictionary=drugs_dictionary, molecule_tokenizer=chemberta_tokenizer,
+                                       use_atc_codes=use_atc_codes, )
     test_tweets_dataset = TweetsDataset(test_df, text_tokenizer, text_max_length=max_length,
-                                        molecule_tokenizer=chemberta_tokenizer, use_atc_codes=use_atc_codes, )
+                                        drugs_dictionary=drugs_dictionary, molecule_tokenizer=chemberta_tokenizer,
+                                        use_atc_codes=use_atc_codes, )
     if apply_upsampling:
+
         positive_class_weight = config.getfloat("UPSAMPLING", "UPSAMPLING_WEIGHT")
+        exp_description += f"_upsampling_{positive_class_weight}"
         train_weights = create_dataset_weights(train_tweets_dataset, positive_class_weight)
         print("Sampling weights:", set(train_weights))
         train_weights = torch.DoubleTensor(train_weights)
@@ -734,14 +757,15 @@ def main():
 
     seeds_list = [0, 1, 2, 3, 5, 7, 11, 13, 21, 42]
 
-    setup_path = os.path.join(output_dir, f"exp_{freeze_embeddings_layer}_{freeze_layer_count}/setup_descr.txt")
+    setup_path = os.path.join(output_dir,
+                              f"exp_{freeze_embeddings_layer}_{freeze_layer_count}{exp_description}/setup_descr.txt")
     setup_dir = os.path.dirname(setup_path)
     if not os.path.exists(setup_dir) and setup_dir != '':
         os.makedirs(setup_dir)
     write_hyperparams(apply_upsampling, positive_class_weight, num_epochs, dropout_p, freeze_layer_count,
                       freeze_embeddings_layer, text_encoder_name, setup_path)
     for seed in seeds_list:
-        experiment_dir = f"exp_{freeze_embeddings_layer}_{freeze_layer_count}/seed_{seed}"
+        experiment_dir = f"exp_{freeze_embeddings_layer}_{freeze_layer_count}{exp_description}/seed_{seed}"
         experiment_dir = os.path.join(output_dir, experiment_dir)
         if not os.path.exists(experiment_dir) and experiment_dir != '':
             os.makedirs(experiment_dir)
@@ -786,8 +810,8 @@ def main():
         bert_classifier = BertSimpleClassifier(bert_text_encoder, dropout=dropout_p,
                                                atc_features_size=atc_features_size).to(device)
         checkpoint_name = f"simple_{text_encoder_name.split('/')[-1]}"
-        model_save_dir = os.path.join(output_dir, f"exp_{freeze_embeddings_layer}_{freeze_layer_count}/")
-
+        model_save_dir = os.path.join(output_dir,
+                                      f"exp_{freeze_embeddings_layer}_{freeze_layer_count}{exp_description}/")
         train_evaluate_model(seed, bert_classifier, use_drug_embeddings, criterion, learning_rate, train_loader,
                              dev_loader, test_loader, num_epochs, output_evaluation_path, model_save_dir,
                              checkpoint_name,
