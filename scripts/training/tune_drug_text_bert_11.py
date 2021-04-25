@@ -642,7 +642,7 @@ def load_drugs_dict(dict_path):
 
 def main():
     config = configparser.ConfigParser()
-    config.read("tune_config_2.ini")
+    config.read("tune_config_11.ini")
     drug_embeddings_from = config["INPUT"]["DRUG_EMBEDDINGS_FROM"]
     max_length = config.getint("PARAMETERS", "MAX_TEXT_LENGTH")
     max_chemberta_length = config.getint("PARAMETERS", "MAX_MOLECULE_LENGTH")
