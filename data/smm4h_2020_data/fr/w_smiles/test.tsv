@@ -1,4 +1,4 @@
-tweet_id	user_id	tweet	label	drug_en_name	drug_id	smiles
+tweet_id	user_id	tweet	class	drug_en_name	drug_id	smiles
 1197161608709115905	1857265290	Bilan de cette formidable matinée :  Tachycarde et syndrome bronchique. Rien de bien grave.  Ventoline et gros dodo à venir. Merci pour vos petits messages 😘	0			
 1195796175334658048	199290767	Le poulet il est sous xanax ou quoi link	0	xanax	DB00404	CC1=NN=C2CN=C(C3=CC=CC=C3)C3=C(C=CC(Cl)=C3)N12
 1141380589649616896	184096978	J'ai besoin dune ventoline link	0			
