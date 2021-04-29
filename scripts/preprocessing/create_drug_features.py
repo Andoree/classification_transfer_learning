@@ -20,6 +20,7 @@ def main():
     parser.add_argument('--features_type', default="atc")
     # cimm-kzn/enrudr-bert, roberta-large
     parser.add_argument('--text_encoder_name', default="cimm-kzn/enrudr-bert")
+    parser.add_argument('--chem_encoder_name', default="./models/seyonec/ChemBERTa_zinc250k_v2_40k/model")
     parser.add_argument('--drug_encoder_max_length', type=int, default=256)
     parser.add_argument('--molbert_embs_path', default=r"../../data/additional_data/drugbank_id_molbert.csv")
     parser.add_argument('--drugbank_path', default=r"../../data/drugbank_database.csv")
@@ -32,6 +33,7 @@ def main():
     input_dict_path = args.input_dict_path
     features_type = args.features_type
     text_encoder_name = args.text_encoder_name
+    chem_encoder_name = args.chem_encoder_name
     drug_encoder_max_length = args.drug_encoder_max_length
     molbert_embs_path = args.molbert_embs_path
     drugbank_path = args.drugbank_path
@@ -50,8 +52,8 @@ def main():
         drugbank_id_smiles_df.set_index("drugbank_id", inplace=True)
         drugbank_id_smiles_df = drugbank_id_smiles_df.squeeze()
 
-        drug_tokenizer = AutoTokenizer.from_pretrained(text_encoder_name, )
-        drug_encoder = AutoModel.from_pretrained(text_encoder_name, )
+        drug_tokenizer = AutoTokenizer.from_pretrained(chem_encoder_name, )
+        drug_encoder = AutoModel.from_pretrained(chem_encoder_name, )
         drug_encoder.eval()
         with torch.no_grad():
             features_fname += f"_{text_encoder_name.split('/')[-1]}"
