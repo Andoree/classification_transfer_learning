@@ -80,7 +80,7 @@ def write_hyperparams(apply_upsampling, positive_class_weight, n_epochs, dropout
 def embedding_str_to_numpy(s):
     numbers_strs = s.strip("[]").split()
     emb_size = len(numbers_strs)
-    embedding = np.empty(shape=emb_size, dtype=np.float)
+    embedding = np.empty(shape=emb_size, dtype=np.float32)
     for i in range(emb_size):
         embedding[i] = np.float(numbers_strs[i])
     return embedding
@@ -88,20 +88,20 @@ def embedding_str_to_numpy(s):
 
 def get_sider_emb_by_drugbank_id(drugbank_ids, sider_embs, drugs_sep='~', emb_size=1320):
     if (type(drugbank_ids) == str and drugbank_ids.strip() == '') or drugbank_ids is np.nan:
-        embedding = np.zeros(shape=emb_size, dtype=np.float)
+        embedding = np.zeros(shape=emb_size, dtype=np.float32)
         return embedding
     drugbank_ids_list = drugbank_ids.split(drugs_sep)
 
     for drug_id in drugbank_ids_list:
         if drug_id not in sider_embs:
-            embedding = np.zeros(shape=emb_size, dtype=np.float)
+            embedding = np.zeros(shape=emb_size, dtype=np.float32)
         else:
             embedding = sider_embs[drug_id]
         if np.isnan(embedding[0]):
             continue
         else:
             return embedding
-    embedding = np.zeros(shape=emb_size, dtype=np.float)
+    embedding = np.zeros(shape=emb_size, dtype=np.float32)
     return embedding
 
 
@@ -120,7 +120,7 @@ def load_drug_features(drug_features_path: str) -> Dict[str, np.array]:
             attrs = line.strip().split('\t')
             drugbank_id = attrs[0]
             feature_vector = [float(x) for x in attrs[1].split()]
-            feature_vector = np.array(feature_vector, dtype=np.float)
+            feature_vector = np.array(feature_vector, dtype=np.float32)
             drug_features_dict[drugbank_id] = feature_vector
     return drug_features_dict
 
@@ -155,5 +155,5 @@ def sample_drug_features(drug_features_dict: Dict[str, np.array], drug_features_
                 if not is_vector_zeros(drug_features):
                     return drug_features
 
-    drug_features = np.zeros(shape=drug_features_size, dtype=np.float)
+    drug_features = np.zeros(shape=drug_features_size, dtype=np.float32)
     return drug_features
