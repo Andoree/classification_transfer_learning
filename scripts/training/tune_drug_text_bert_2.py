@@ -15,9 +15,9 @@ from tqdm import tqdm
 from transformers import AutoModel, RobertaModel
 from transformers import AutoTokenizer
 
-from scripts.training.utils import mask_drug, get_smiles_list, epoch_time, save_labels_probas, write_hyperparams, \
+from utils import mask_drug, get_smiles_list, epoch_time, save_labels_probas, write_hyperparams, \
     load_drugs_dict, load_drug_features, split_drugs_ids_str, sample_drug_features
-from .attention import BertCrossattLayer
+from attention import BertCrossattLayer
 
 device = "cuda" if torch.cuda.is_available else "cpu"
 
