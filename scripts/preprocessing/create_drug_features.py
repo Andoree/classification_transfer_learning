@@ -2,6 +2,7 @@ import codecs
 import os
 from argparse import ArgumentParser
 from ast import literal_eval
+from typing import Set
 
 import numpy as np
 import pandas as pd
@@ -10,7 +11,15 @@ from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModel
 
 from scripts.preprocessing.append_atc_codes import get_atc_codes_first_char_values_set
-from scripts.training.utils import load_drugs_dict
+
+
+
+def load_drugs_dict(dict_path: str) -> Set[str]:
+    drugs = set()
+    with codecs.open(dict_path, 'r', encoding="utf-8") as inp_file:
+        for line in inp_file:
+            drugs.add(line.strip())
+    return drugs
 
 
 def main():
