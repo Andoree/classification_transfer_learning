@@ -2,12 +2,17 @@ import codecs
 import configparser
 import os
 import random
+import re
 import time
+from typing import Set
 
+import nltk
 import numpy as np
 import pandas as pd
 import torch
 import torch.optim as optim
+from .attention import BertCrossattLayer
+from natasha import Segmenter, Doc
 from sklearn.metrics import precision_score, f1_score, recall_score
 from torch import nn
 from torch.utils.data import Dataset
@@ -15,17 +20,47 @@ from tqdm import tqdm
 from transformers import AutoModel, RobertaModel
 from transformers import AutoTokenizer
 
-from scripts.training.utils import mask_drug, get_smiles_list, epoch_time, save_labels_probas, write_hyperparams, \
-    load_drugs_dict, load_drug_features, split_drugs_ids_str, sample_drug_features
-from .attention import BertCrossattLayer
-
 device = "cuda" if torch.cuda.is_available else "cpu"
+
+
+def mask_drug(text: str, drugs_set: Set[str], drug_mask: str = "DRUG"):
+    """
+    :param text: Raw tweet string
+    :param drugs_set: Set of possible forms of drug mentions
+    :param drug_mask: Mask to replace drug mentions with
+    :return: Tweet string with masked drug mentions
+    """
+    ru_letters = set("абвгдеёжзийклмнопрстуфхцчъыьэюя")
+    en_letters = set('abcdefghijklmnopqrstuvwxyz')
+    ru_counter = 0
+    en_counter = 0
+    for char in text:
+        if char in ru_letters:
+            ru_counter += 1
+        elif char in en_letters:
+            en_counter += 1
+    if ru_counter > en_counter:
+        segmenter = Segmenter()
+        natasha_doc = Doc(text)
+        natasha_doc.segment(segmenter)
+        tokens = [token.text for token in natasha_doc.tokens]
+    else:
+        tokens = nltk.word_tokenize(text)
+
+    replace_tokens = []
+    for token in tokens:
+        if token.lower() in drugs_set:
+            replace_tokens.append(token)
+    replace_tokens.sort(key=lambda t: -len(t), )
+    for token in replace_tokens:
+        text = re.sub(token, drug_mask, text, flags=re.IGNORECASE)
+
+    return text
 
 
 class TweetsDataset(Dataset):
     def __init__(self, tweets_df, text_tokenizer, molecule_tokenizer=None, molecule_max_length=256,
-                 text_max_length=128, sampling_type="first", drugs_dictionary=None,
-                 drug_features_dict=None, drug_features_size=None):
+                 text_max_length=128, sampling_type="first", use_atc_codes=False, drugs_dictionary=None):
         self.labels = tweets_df["class"].astype(np.float32).values
         self.text_max_length = text_max_length
         self.sampling_type = sampling_type
@@ -36,12 +71,10 @@ class TweetsDataset(Dataset):
         self.tokenized_tweets = [text_tokenizer.encode_plus(x, max_length=self.text_max_length,
                                                             padding="max_length", truncation=True,
                                                             return_tensors="pt", ) for x in tweets]
-        if drug_features_dict is not None and drug_features_size is not None:
-            self.drugbank_ids = [split_drugs_ids_str(drug_ids_str) for drug_ids_str in tweets_df.drug_id.values]
         self.tokenized_molecules = None
-        self.drug_features_dict = drug_features_dict
-        self.drug_features_size = drug_features_size
-
+        self.atc_codes_features = None
+        if use_atc_codes:
+            self.atc_codes_features = tweets_df.loc[:, "A": "V", ].values
         if molecule_tokenizer is not None:
             smiles_list = get_smiles_list(tweets_df.smiles.values)
             self.tokenized_molecules = [molecule_tokenizer.batch_encode_plus(x, max_length=self.molecule_max_length,
@@ -58,12 +91,8 @@ class TweetsDataset(Dataset):
             "drug_embeddings": self.drug_embeddings[idx],
             "labels": self.labels[idx]
         }
-        if self.drug_features_dict is not None:
-            drug_ids_list = self.drugbank_ids[idx]
-            drug_features = sample_drug_features(drug_features_dict=self.drug_features_dict,
-                                                 drug_features_size=self.drug_features_size,
-                                                 drug_ids_list=drug_ids_list, sampling_type=self.sampling_type)
-            sample_dict["drug_features"] = drug_features
+        if self.atc_codes_features is not None:
+            sample_dict["atc_codes"] = self.atc_codes_features[idx]
 
         if self.tokenized_molecules is not None:
             if self.sampling_type == "random":
@@ -111,7 +140,7 @@ def create_dataset_weights(dataset, positive_class_weight=-1.0):
 
 
 def train(model, iterator, optimizer, criterion, use_drug_embeddings=True, cross_att_flag=False,
-          drug_features_size=None):
+          atc_features_size=None):
     model.train()
 
     epoch_loss = 0
@@ -123,22 +152,22 @@ def train(model, iterator, optimizer, criterion, use_drug_embeddings=True, cross
         input_ids = batch["input_ids"].to(device)
         attention_mask = batch["attention_mask"].to(device)
         labels = batch["labels"].to(device)
-        drug_features = None
-        if drug_features_size is not None:
-            drug_features = batch["drug_features"].to(device)
+        atc_features = None
+        if atc_features_size is not None:
+            atc_features = batch["atc_codes"].to(device)
         assert not (cross_att_flag and use_drug_embeddings)
         if use_drug_embeddings:
             drug_embeddings = batch["drug_embeddings"].to(device)
             output = model(inputs=input_ids, attention_mask=attention_mask, drug_embeddings=drug_embeddings,
-                           drug_features=drug_features).squeeze(1)
+                           atc_features=atc_features).squeeze(1)
         elif cross_att_flag:
             molecule_input_ids = batch["molecule_input_ids"].to(device)
             molecule_attention_mask = batch["molecule_attention_mask"].to(device)
             output = model(text_inputs=input_ids, text_attention_mask=attention_mask,
-                           molecule_inputs=molecule_input_ids, drug_features=drug_features,
+                           molecule_inputs=molecule_input_ids, atc_features=atc_features,
                            molecule_attention_mask=molecule_attention_mask).squeeze(1)
         else:
-            output = model(inputs=input_ids, attention_mask=attention_mask, drug_features=drug_features).squeeze(1)
+            output = model(inputs=input_ids, attention_mask=attention_mask, atc_features=atc_features).squeeze(1)
         loss = criterion(output, labels)
         loss.backward()
         optimizer.step()
@@ -148,6 +177,16 @@ def train(model, iterator, optimizer, criterion, use_drug_embeddings=True, cross
         history.append(loss.cpu().data.numpy())
 
     return epoch_loss / (i + 1)
+
+
+def get_smiles_list(smiles_list, molecules_sep='~~~'):
+    preprocessed_smiles = []
+    for smile_str in smiles_list:
+        if smile_str is np.nan:
+            preprocessed_smiles.append([""])
+        else:
+            preprocessed_smiles.append(smile_str.split(molecules_sep))
+    return preprocessed_smiles
 
 
 def encode_smiles(model, tokenizer, smiles_list, max_length, molecules_sep='~~~'):
@@ -173,7 +212,7 @@ def encode_smiles(model, tokenizer, smiles_list, max_length, molecules_sep='~~~'
     return molecules_embeddings
 
 
-def evaluate(model, iterator, criterion, use_drug_embeddings, cross_att_flag=False, drug_features_size=None):
+def evaluate(model, iterator, criterion, use_drug_embeddings, cross_att_flag=False, atc_features_size=None):
     model.eval()
     epoch_loss = 0
     true_labels = []
@@ -184,9 +223,9 @@ def evaluate(model, iterator, criterion, use_drug_embeddings, cross_att_flag=Fal
             input_ids = batch["input_ids"].to(device)
             attention_mask = batch["attention_mask"].to(device)
             labels = batch["labels"]
-            drug_features = None
-            if drug_features_size is not None:
-                drug_features = batch["drug_features"].to(device)
+            atc_features = None
+            if atc_features_size is not None:
+                atc_features = batch["atc_codes"].to(device)
 
             true_labels.extend(labels.cpu().numpy())
             labels = labels.to(device)
@@ -195,15 +234,15 @@ def evaluate(model, iterator, criterion, use_drug_embeddings, cross_att_flag=Fal
             if use_drug_embeddings:
                 drug_embeddings = batch["drug_embeddings"].to(device)
                 output = model(inputs=input_ids, attention_mask=attention_mask,
-                               drug_embeddings=drug_embeddings, drug_features=drug_features).squeeze(1)
+                               drug_embeddings=drug_embeddings, atc_features=atc_features).squeeze(1)
             elif cross_att_flag:
                 molecule_input_ids = batch["molecule_input_ids"].to(device)
                 molecule_attention_mask = batch["molecule_attention_mask"].to(device)
                 output = model(text_inputs=input_ids, text_attention_mask=attention_mask,
-                               molecule_inputs=molecule_input_ids, drug_features=drug_features,
+                               molecule_inputs=molecule_input_ids, atc_features=atc_features,
                                molecule_attention_mask=molecule_attention_mask).squeeze(1)
             else:
-                output = model(inputs=input_ids, attention_mask=attention_mask, drug_features=drug_features).squeeze(1)
+                output = model(inputs=input_ids, attention_mask=attention_mask, atc_features=atc_features).squeeze(1)
             pred_probas = output.cpu().numpy()
             batch_pred_labels = (pred_probas >= 0.5) * 1
 
@@ -216,8 +255,15 @@ def evaluate(model, iterator, criterion, use_drug_embeddings, cross_att_flag=Fal
     return epoch_loss / (i + 1), valid_f1_score
 
 
+def epoch_time(start_time, end_time):
+    elapsed_time = end_time - start_time
+    elapsed_mins = int(elapsed_time / 60)
+    elapsed_secs = int(elapsed_time - (elapsed_mins * 60))
+    return elapsed_mins, elapsed_secs
+
+
 def train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criterion, n_epochs, use_drug_embeddings,
-                   save_checkpoint_path, output_evaluation_path, cross_att_flag=False, drug_features_size=None):
+                   save_checkpoint_path, output_evaluation_path, cross_att_flag=False, atc_features_size=None):
     train_history = []
     valid_history = []
     valid_history_f1 = []
@@ -234,9 +280,9 @@ def train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criteri
         start_time = time.time()
 
         train_loss = train(bert_classifier, train_loader, optimizer, criterion, use_drug_embeddings,
-                           cross_att_flag=cross_att_flag, drug_features_size=drug_features_size)
+                           cross_att_flag=cross_att_flag, atc_features_size=atc_features_size)
         valid_loss, valid_f1_score = evaluate(bert_classifier, dev_loader, criterion, use_drug_embeddings,
-                                              cross_att_flag=cross_att_flag, drug_features_size=drug_features_size)
+                                              cross_att_flag=cross_att_flag, atc_features_size=atc_features_size)
 
         end_time = time.time()
 
@@ -263,9 +309,27 @@ def train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criteri
     return best_epoch
 
 
+def save_labels_probas(labels_path, probas_path, labels, probas):
+    with codecs.open(labels_path, 'w+', encoding="utf-8") as labels_file, \
+            codecs.open(probas_path, 'w+', encoding="utf-8") as probas_file:
+        for label, probability in zip(labels, probas):
+            labels_file.write(f"{label}\n")
+            probas_file.write(f"{probability}\n")
+
+
+def write_hyperparams(apply_upsampling, positive_class_weight, n_epochs, dropout, freeze_layer_count,
+                      freeze_embeddings_layer, text_model_name, output_path):
+    with codecs.open(output_path, 'w+', encoding="utf-8") as out_file:
+        out_file.write(f"model name: {text_model_name}\n")
+        out_file.write(f"Upsampling: {apply_upsampling}\nUpsampling_weight: {positive_class_weight}\n")
+        out_file.write(f"n_epochs: {n_epochs}\ndropout: {dropout}\n")
+        out_file.write(
+            f"freeze_layer_count : {freeze_layer_count}\nfreeze_embeddings_layer: {freeze_embeddings_layer}\n")
+
+
 def train_evaluate_model(seed, bert_classifier, use_drug_embeddings, criterion, learning_rate, train_loader, dev_loader,
                          test_loader, num_epochs, output_evaluation_path, output_model_dir, model_chkpnt_name,
-                         cross_att_flag=False, drug_features_size=None):
+                         cross_att_flag=False, atc_features_size=None):
     torch.manual_seed(seed)
     optimizer = optim.Adam(bert_classifier.parameters(), lr=learning_rate)
     # criterion = nn.BCEWithLogitsLoss()
@@ -273,19 +337,17 @@ def train_evaluate_model(seed, bert_classifier, use_drug_embeddings, criterion, 
     output_ckpt_path = os.path.join(output_model_dir, f"best-val-{model_chkpnt_name}.pt")
     best_epoch = train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criterion, num_epochs,
                                 use_drug_embeddings, output_ckpt_path, output_evaluation_path,
-                                cross_att_flag=cross_att_flag, drug_features_size=drug_features_size)
-    if best_epoch != -1:
-        bert_classifier.load_state_dict(torch.load(output_ckpt_path))
+                                cross_att_flag=cross_att_flag, atc_features_size=atc_features_size)
+
+    bert_classifier.load_state_dict(torch.load(output_ckpt_path))
 
     true_labels, pred_labels, pred_probas = predict(bert_classifier, train_loader, use_drug_embeddings,
-                                                    cross_att_flag=cross_att_flag,
-                                                    drug_features_size=drug_features_size)
+                                                    cross_att_flag=cross_att_flag, atc_features_size=atc_features_size)
     save_labels_probas(labels_path=os.path.join(output_model_dir, "pred_train_labels.txt"),
                        probas_path=os.path.join(output_model_dir, "pred_train_probas.txt"), labels=pred_labels,
                        probas=pred_probas)
     true_labels, pred_labels, pred_probas = predict(bert_classifier, dev_loader, use_drug_embeddings,
-                                                    cross_att_flag=cross_att_flag,
-                                                    drug_features_size=drug_features_size)
+                                                    cross_att_flag=cross_att_flag, atc_features_size=atc_features_size)
     assert len(pred_labels) == len(pred_probas)
     assert len(true_labels) == len(pred_labels)
     val_model_precision = precision_score(true_labels, pred_labels)
@@ -296,8 +358,7 @@ def train_evaluate_model(seed, bert_classifier, use_drug_embeddings, criterion, 
                        probas=pred_probas)
 
     true_labels, pred_labels, pred_probas = predict(bert_classifier, test_loader, use_drug_embeddings,
-                                                    cross_att_flag=cross_att_flag,
-                                                    drug_features_size=drug_features_size)
+                                                    cross_att_flag=cross_att_flag, atc_features_size=atc_features_size)
     assert len(pred_labels) == len(pred_probas)
     assert len(true_labels) == len(pred_labels)
     test_model_precision = precision_score(true_labels, pred_labels)
@@ -317,7 +378,7 @@ def train_evaluate_model(seed, bert_classifier, use_drug_embeddings, criterion, 
 
 
 def predict(model, data_loader, use_drug_embeddings, cross_att_flag=False, decision_threshold=0.5,
-            drug_features_size=None):
+            atc_features_size=None):
     true_labels = []
     pred_labels = []
     pred_probas = []
@@ -328,23 +389,23 @@ def predict(model, data_loader, use_drug_embeddings, cross_att_flag=False, decis
             input_ids = batch["input_ids"].to(device)
             attention_mask = batch["attention_mask"].to(device)
             batch_true_labels = batch["labels"].cpu().numpy()
-            drug_features = None
-            if drug_features_size is not None:
-                drug_features = batch["drug_features"].to(device)
+            atc_features = None
+            if atc_features_size is not None:
+                atc_features = batch["atc_codes"].to(device)
             assert not (cross_att_flag and use_drug_embeddings)
             if use_drug_embeddings:
                 drug_embeddings = batch["drug_embeddings"].to(device)
                 batch_pred_probas = model(inputs=input_ids, attention_mask=attention_mask,
-                                          drug_embeddings=drug_embeddings, drug_features=drug_features).squeeze(1)
+                                          drug_embeddings=drug_embeddings, atc_features=atc_features).squeeze(1)
             elif cross_att_flag:
                 molecule_input_ids = batch["molecule_input_ids"].to(device)
                 molecule_attention_mask = batch["molecule_attention_mask"].to(device)
                 batch_pred_probas = model(text_inputs=input_ids, text_attention_mask=attention_mask,
-                                          molecule_inputs=molecule_input_ids, drug_features=drug_features,
+                                          molecule_inputs=molecule_input_ids, atc_features=atc_features,
                                           molecule_attention_mask=molecule_attention_mask).squeeze(1)
             else:
                 batch_pred_probas = model(inputs=input_ids, attention_mask=attention_mask,
-                                          drug_features=drug_features, ).squeeze(1)
+                                          atc_features=atc_features, ).squeeze(1)
 
             batch_pred_probas = batch_pred_probas.cpu().numpy()
 
@@ -357,16 +418,16 @@ def predict(model, data_loader, use_drug_embeddings, cross_att_flag=False, decis
 
 
 class BertSimpleClassifier(nn.Module):
-    def __init__(self, bert_text_encoder, dropout, drug_features_size):
+    def __init__(self, bert_text_encoder, dropout, atc_features_size):
         super().__init__()
 
         self.bert_text_encoder = bert_text_encoder
         bert_hidden_dim = bert_text_encoder.config.hidden_size
-        self.drug_features_size = drug_features_size
+        self.atc_features_size = atc_features_size
         self.emb_dropout = nn.Dropout(p=dropout)
         classifier_input_size = bert_hidden_dim
-        if drug_features_size is not None:
-            classifier_input_size += drug_features_size
+        if atc_features_size is not None:
+            classifier_input_size += atc_features_size
         self.classifier = nn.Sequential(
             nn.GELU(),
             nn.Linear(classifier_input_size, bert_hidden_dim),
@@ -375,29 +436,29 @@ class BertSimpleClassifier(nn.Module):
             nn.Linear(bert_hidden_dim, 1),
         )
 
-    def forward(self, inputs, attention_mask, drug_features=None, ):
+    def forward(self, inputs, attention_mask, atc_features=None, ):
         last_hidden_states = self.bert_text_encoder(inputs, attention_mask=attention_mask,
                                                     return_dict=True)['last_hidden_state']
         text_cls_embeddings = torch.stack([elem[0, :] for elem in last_hidden_states])
         text_cls_embeddings = self.emb_dropout(text_cls_embeddings)
-        if self.drug_features_size is not None:
-            text_cls_embeddings = torch.cat([text_cls_embeddings, drug_features], dim=1)
+        if self.atc_features_size is not None:
+            text_cls_embeddings = torch.cat([text_cls_embeddings, atc_features], dim=1)
         proba = self.classifier(text_cls_embeddings)
         return proba
 
 
 class BertClassifierWithDrugEmbeddings(nn.Module):
-    def __init__(self, bert_text_encoder, drug_enc_hid_dim, dropout, drug_features_size=None):
+    def __init__(self, bert_text_encoder, drug_enc_hid_dim, dropout, atc_features_size=None):
         super().__init__()
 
         self.bert_text_encoder = bert_text_encoder
         # self.dropout = nn.Dropout(dropout)
         bert_hidden_dim = bert_text_encoder.config.hidden_size
-        self.drug_features_size = drug_features_size
+        self.atc_features_size = atc_features_size
         self.emb_dropout = nn.Dropout(p=dropout)
         classifier_input_size = bert_hidden_dim + drug_enc_hid_dim
-        if drug_features_size is not None:
-            classifier_input_size += drug_features_size
+        if atc_features_size is not None:
+            classifier_input_size += atc_features_size
 
         self.classifier = nn.Sequential(
             nn.GELU(),
@@ -407,15 +468,15 @@ class BertClassifierWithDrugEmbeddings(nn.Module):
             nn.Linear(bert_hidden_dim, 1),
         )
 
-    def forward(self, inputs, attention_mask, drug_embeddings, drug_features):
+    def forward(self, inputs, attention_mask, drug_embeddings, atc_features):
         last_hidden_states = self.bert_text_encoder(inputs, attention_mask=attention_mask,
                                                     return_dict=True)['last_hidden_state']
         text_cls_embeddings = torch.stack([elem[0, :] for elem in last_hidden_states])
         text_cls_embeddings = self.emb_dropout(text_cls_embeddings)
-        if self.drug_features_size is None:
+        if self.atc_features_size is None:
             concat_text_drug_embeddings = torch.cat([text_cls_embeddings, drug_embeddings], dim=1)
         else:
-            concat_text_drug_embeddings = torch.cat([text_cls_embeddings, drug_embeddings, drug_features], dim=1)
+            concat_text_drug_embeddings = torch.cat([text_cls_embeddings, drug_embeddings, atc_features], dim=1)
 
         proba = self.classifier(concat_text_drug_embeddings)
         return proba
@@ -456,12 +517,12 @@ class ConcatDoubleEncoderBertClassifieer(nn.Module):
 
 class CrossModalityBertClassifier(nn.Module):
     def __init__(self, bert_text_encoder, bert_molecule_encoder, classifier_dropout, cross_att_attention_dropout,
-                 cross_att_hidden_dropout, drug_features_size=None):
+                 cross_att_hidden_dropout, atc_features_size=None):
         super().__init__()
 
         self.bert_text_encoder = bert_text_encoder
         self.bert_molecule_encoder = bert_molecule_encoder
-        self.drug_features_size = drug_features_size
+        self.atc_features_size = atc_features_size
         text_bert_hidden_dim = bert_text_encoder.config.hidden_size
         molecule_bert_hidden_dim = bert_molecule_encoder.config.hidden_size
         num_attention_heads = text_bert_hidden_dim // 64
@@ -469,8 +530,8 @@ class CrossModalityBertClassifier(nn.Module):
                                                        cross_att_attention_dropout, cross_att_hidden_dropout,
                                                        num_attention_heads=num_attention_heads)
         classifier_input_size = text_bert_hidden_dim
-        if drug_features_size is not None:
-            classifier_input_size += drug_features_size
+        if atc_features_size is not None:
+            classifier_input_size += atc_features_size
         self.classifier = nn.Sequential(
             nn.Dropout(p=classifier_dropout),
             nn.GELU(),
@@ -480,7 +541,7 @@ class CrossModalityBertClassifier(nn.Module):
             nn.Linear(text_bert_hidden_dim, 1),
         )
 
-    def forward(self, text_inputs, text_attention_mask, molecule_inputs, molecule_attention_mask, drug_features):
+    def forward(self, text_inputs, text_attention_mask, molecule_inputs, molecule_attention_mask, atc_features):
         text_last_hidden_states = self.bert_text_encoder(text_inputs, attention_mask=text_attention_mask,
                                                          return_dict=True)['last_hidden_state']
         # text_cls_embeddings = torch.stack([elem[0, :] for elem in text_last_hidden_states])
@@ -491,8 +552,8 @@ class CrossModalityBertClassifier(nn.Module):
         cross_attention_output = self.cross_attention_layer(input_tensor=text_last_hidden_states,
                                                             ctx_tensor=molecule_last_hidden_states, )
         cross_att_output_cls_embs = torch.stack([elem[0, :] for elem in cross_attention_output])
-        if self.drug_features_size is not None:
-            cross_att_output_cls_embs = torch.cat([cross_att_output_cls_embs, drug_features], dim=1)
+        if self.atc_features_size is not None:
+            cross_att_output_cls_embs = torch.cat([cross_att_output_cls_embs, atc_features], dim=1)
         proba = self.classifier(cross_att_output_cls_embs)
         return proba
 
@@ -532,6 +593,15 @@ def clear():
     os.system('cls')
 
 
+def embedding_str_to_numpy(s):
+    numbers_strs = s.strip("[]").split()
+    emb_size = len(numbers_strs)
+    embedding = np.empty(shape=emb_size, dtype=np.float)
+    for i in range(emb_size):
+        embedding[i] = np.float(numbers_strs[i])
+    return embedding
+
+
 def get_positive_class_loss_weight(data_df, class_column="class"):
     class_counts = data_df[class_column].value_counts()
     positive_class_weight = class_counts[0] / class_counts[1]
@@ -543,9 +613,36 @@ def get_row_sider_embedding(row):
     return embedding
 
 
+def get_sider_emb_by_drugbank_id(drugbank_ids, sider_embs, drugs_sep='~', emb_size=1320):
+    if (type(drugbank_ids) == str and drugbank_ids.strip() == '') or drugbank_ids is np.nan:
+        embedding = np.zeros(shape=emb_size, dtype=np.float)
+        return embedding
+    drugbank_ids_list = drugbank_ids.split(drugs_sep)
+
+    for drug_id in drugbank_ids_list:
+        if drug_id not in sider_embs:
+            embedding = np.zeros(shape=emb_size, dtype=np.float)
+        else:
+            embedding = sider_embs[drug_id]
+        if np.isnan(embedding[0]):
+            continue
+        else:
+            return embedding
+    embedding = np.zeros(shape=emb_size, dtype=np.float)
+    return embedding
+
+
+def load_drugs_dict(dict_path):
+    drugs = set()
+    with codecs.open(dict_path, 'r', encoding="utf-8") as inp_file:
+        for line in inp_file:
+            drugs.add(line.strip())
+    return drugs
+
+
 def main():
     config = configparser.ConfigParser()
-    config.read("tune_config.ini")
+    config.read("tune_config_2.ini")
     drug_embeddings_from = config["INPUT"]["DRUG_EMBEDDINGS_FROM"]
     max_length = config.getint("PARAMETERS", "MAX_TEXT_LENGTH")
     max_chemberta_length = config.getint("PARAMETERS", "MAX_MOLECULE_LENGTH")
@@ -562,16 +659,8 @@ def main():
     model_type = config["PARAMETERS"]["MODEL_TYPE"]
     mask_drug_flag = config.get("PARAMETERS", "MASK_DRUG")
     train_drug_sampling_type = config["PARAMETERS"]["DRUG_SAMPLING"]
-    drug_features_path = config["PARAMETERS"]["DRUG_FEATURES_PATH"]
-    if drug_features_path != "none":
-        drug_features_dict = load_drug_features(drug_features_path)
-        drug_features_fname = os.path.basename(drug_features_path)
-        drug_features_str = drug_features_fname.split('.')[0]
-        drug_features_size = len(list(drug_features_dict.values())[0])
-    else:
-        drug_features_dict = None
-        drug_features_size = None
-        drug_features_str = ''
+    # use_atc_codes = config.getboolean("PARAMETERS", "USE_ATC_CODES")
+    use_atc_codes = False
 
     output_dir = config["OUTPUT"]["OUTPUT_DIR"]
     if not os.path.exists(output_dir) and output_dir != '':
@@ -591,7 +680,7 @@ def main():
     torch.cuda.random.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
     data_dir = config["INPUT"]["INPUT_DIR"]
-    exp_description = f"{drug_features_str}"
+    exp_description = f""
 
     train_path = os.path.join(data_dir, "train.tsv")
     test_path = os.path.join(data_dir, "test.tsv")
@@ -599,7 +688,9 @@ def main():
     train_df = pd.read_csv(train_path, sep='\t', )
     dev_df = pd.read_csv(dev_path, sep='\t', )
     test_df = pd.read_csv(test_path, sep='\t', )
-
+    atc_features_size = None
+    if use_atc_codes:
+        atc_features_size = train_df.loc[:, "A": "V", ].shape[1]
     drugs_dictionary = None
     if mask_drug_flag:
         exp_description += "_masking"
@@ -641,15 +732,15 @@ def main():
     chemberta_tokenizer = None
 
     train_tweets_dataset = TweetsDataset(train_df, text_tokenizer, text_max_length=max_length,
-                                         drugs_dictionary=drugs_dictionary, drug_features_dict=drug_features_dict,
-                                         molecule_tokenizer=chemberta_tokenizer, drug_features_size=drug_features_size,
+                                         use_atc_codes=use_atc_codes, drugs_dictionary=drugs_dictionary,
+                                         molecule_tokenizer=chemberta_tokenizer,
                                          sampling_type=train_drug_sampling_type)
     dev_tweets_dataset = TweetsDataset(dev_df, text_tokenizer, text_max_length=max_length,
-                                       drug_features_dict=drug_features_dict, drug_features_size=drug_features_size,
-                                       drugs_dictionary=drugs_dictionary, molecule_tokenizer=chemberta_tokenizer, )
+                                       drugs_dictionary=drugs_dictionary, molecule_tokenizer=chemberta_tokenizer,
+                                       use_atc_codes=use_atc_codes, )
     test_tweets_dataset = TweetsDataset(test_df, text_tokenizer, text_max_length=max_length,
-                                        drug_features_dict=drug_features_dict, drug_features_size=drug_features_size,
-                                        drugs_dictionary=drugs_dictionary, molecule_tokenizer=chemberta_tokenizer, )
+                                        drugs_dictionary=drugs_dictionary, molecule_tokenizer=chemberta_tokenizer,
+                                        use_atc_codes=use_atc_codes, )
     if apply_upsampling:
 
         positive_class_weight = config.getfloat("UPSAMPLING", "UPSAMPLING_WEIGHT")
@@ -717,14 +808,14 @@ def main():
         torch.manual_seed(seed)
         use_drug_embeddings = False
         bert_classifier = BertSimpleClassifier(bert_text_encoder, dropout=dropout_p,
-                                               drug_features_size=drug_features_size).to(device)
+                                               atc_features_size=atc_features_size).to(device)
         checkpoint_name = f"simple_{text_encoder_name.split('/')[-1]}"
         model_save_dir = os.path.join(output_dir,
                                       f"exp_{freeze_embeddings_layer}_{freeze_layer_count}{exp_description}/")
         train_evaluate_model(seed, bert_classifier, use_drug_embeddings, criterion, learning_rate, train_loader,
                              dev_loader, test_loader, num_epochs, output_evaluation_path, model_save_dir,
                              checkpoint_name,
-                             cross_att_flag=cross_att_flag, drug_features_size=drug_features_size)
+                             cross_att_flag=cross_att_flag, atc_features_size=atc_features_size)
 
         true_labels, dev_pred_labels, dev_pred_probas = predict(bert_classifier, dev_loader, use_drug_embeddings)
         assert len(dev_pred_labels) == len(true_labels)
