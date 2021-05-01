@@ -2,6 +2,7 @@ import codecs
 import os
 from argparse import ArgumentParser
 from ast import literal_eval
+from typing import Set
 
 import numpy as np
 import pandas as pd
@@ -10,17 +11,22 @@ from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModel
 
 from scripts.preprocessing.append_atc_codes import get_atc_codes_first_char_values_set
-from scripts.training.utils import load_drugs_dict
+
+
+def load_drugs_dict(dict_path: str) -> Set[str]:
+    drugs = set()
+    with codecs.open(dict_path, 'r', encoding="utf-8") as inp_file:
+        for line in inp_file:
+            drugs.add(line.strip())
+    return drugs
 
 
 def main():
     parser = ArgumentParser()
     parser.add_argument('--input_dict_path', default="../../data/additional_data/drugs.txt")
     # molbert/atc/text_emb/rdkit
-    parser.add_argument('--features_type', default="atc")
-    # cimm-kzn/enrudr-bert, roberta-large
-    parser.add_argument('--text_encoder_name', default="cimm-kzn/enrudr-bert")
-    parser.add_argument('--chem_encoder_name', default="./models/seyonec/ChemBERTa_zinc250k_v2_40k/model")
+    parser.add_argument('--features_type', default="rdkit")
+    parser.add_argument('--chem_encoder_name', default="../training/models/seyonec/ChemBERTa_zinc250k_v2_40k/model")
     parser.add_argument('--drug_encoder_max_length', type=int, default=256)
     parser.add_argument('--molbert_embs_path', default=r"../../data/additional_data/drugbank_id_molbert.csv")
     parser.add_argument('--drugbank_path', default=r"../../data/drugbank_database.csv")
@@ -32,7 +38,6 @@ def main():
 
     input_dict_path = args.input_dict_path
     features_type = args.features_type
-    text_encoder_name = args.text_encoder_name
     chem_encoder_name = args.chem_encoder_name
     drug_encoder_max_length = args.drug_encoder_max_length
     molbert_embs_path = args.molbert_embs_path
@@ -53,10 +58,10 @@ def main():
         drugbank_id_smiles_df = drugbank_id_smiles_df.squeeze()
 
         drug_tokenizer = AutoTokenizer.from_pretrained(chem_encoder_name, )
-        drug_encoder = AutoModel.from_pretrained(chem_encoder_name, )
+        drug_encoder = AutoModel.from_pretrained(chem_encoder_name, ).to(device)
         drug_encoder.eval()
         with torch.no_grad():
-            features_fname += f"_{text_encoder_name.split('/')[-1]}"
+            # features_fname += f"_{chem_encoder_name.split('/')[-1]}"
             for drugbank_id in drugbank_ids_set:
                 if drugbank_id in drugbank_id_smiles_df:
                     drug_smile_str = drugbank_id_smiles_df[drugbank_id]
@@ -116,15 +121,9 @@ def main():
         rdkit_df.drop_duplicates(inplace=True)
         print(rdkit_df.shape)
         rdkit_df.fillna(value=0.0, inplace=True)
+        print("NANs:", rdkit_df.isnull().values.any())
         unique_counter = rdkit_df.nunique()
         unique_counter = unique_counter[unique_counter > 1]
-        # multiclass_columns = unique_counter[(unique_counter < 10) & (unique_counter > 2)].index.tolist()
-        # counter = 0
-        # for col in multiclass_columns:
-        #     unique_vals = rdkit_df[col].unique()
-        #     counter += len(unique_vals)
-        #     print(sorted(unique_vals))
-        # print("Counter:", counter)
 
         binary_columns_candidates = unique_counter[unique_counter == 2].index.tolist()
         binary_columns = []
@@ -133,7 +132,6 @@ def main():
             if 0. in unique_vals and 1. in unique_vals:
                 binary_columns.append(col)
         print('binary:', len(binary_columns))
-        unique_counter.sort_values(inplace=True)
         rdkit_features_columns = unique_counter.index.tolist()
         print("Feature columns:", len(rdkit_features_columns))
         rdkit_df = rdkit_df[rdkit_features_columns]
@@ -144,12 +142,21 @@ def main():
         rdkit_quantitative_columns = rdkit_features_columns.copy()
         for col in binary_columns_candidates:
             rdkit_quantitative_columns.remove(col)
-        rdkit_df.fillna(0.0, inplace=True)
-
+        # rdkit_df.fillna(0.0, inplace=True)
+        rdkit_df.QHatched = rdkit_df.QHatched.replace({np.inf: 0.0})
+        rdkit_quantitative_columns.remove("SPI")
+        rdkit_features_columns.remove("SPI")
         rdkit_mean = rdkit_df[rdkit_quantitative_columns].mean(axis=0)
-        rdkit_std = rdkit_df[rdkit_quantitative_columns].std(axis=0)
-        rdkit_df[rdkit_quantitative_columns] = (rdkit_df[rdkit_quantitative_columns] - rdkit_mean) / rdkit_std
-
+        # print(rdkit_mean)
+        print("Mean NANs:", rdkit_mean.isnull().any())
+        print("Quantitative columns:", len(rdkit_quantitative_columns))
+        rdkit_std = rdkit_df[rdkit_quantitative_columns].std(axis=0, )
+        print("Std NANs:", rdkit_std.isnull().any())
+        rdkit_quantitative_columns = [col for col in rdkit_quantitative_columns if rdkit_std[col] != 0.0]
+        print("Quantitative columns:", len(rdkit_quantitative_columns))
+        rdkit_df[rdkit_quantitative_columns] = (rdkit_df[rdkit_quantitative_columns] - rdkit_mean[
+            rdkit_quantitative_columns]) / rdkit_std[rdkit_quantitative_columns]
+        print("Features NANs:", rdkit_df.isnull().values.any())
         for drugbank_id in drugbank_ids_set:
             if drugbank_id in molbert_embs_df:
                 drug_smile_str = molbert_embs_df[drugbank_id]

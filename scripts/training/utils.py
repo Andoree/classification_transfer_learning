@@ -1,0 +1,159 @@
+import codecs
+import re
+from typing import Set, Dict, List
+
+import nltk
+import numpy as np
+from natasha import Segmenter, Doc
+
+
+def mask_drug(text: str, drugs_set: Set[str], drug_mask: str = "DRUG"):
+    """
+    :param text: Raw tweet string
+    :param drugs_set: Set of possible forms of drug mentions
+    :param drug_mask: Mask to replace drug mentions with
+    :return: Tweet string with masked drug mentions
+    """
+    ru_letters = set("абвгдеёжзийклмнопрстуфхцчъыьэюя")
+    en_letters = set('abcdefghijklmnopqrstuvwxyz')
+    ru_counter = 0
+    en_counter = 0
+    for char in text:
+        if char in ru_letters:
+            ru_counter += 1
+        elif char in en_letters:
+            en_counter += 1
+    if ru_counter > en_counter:
+        segmenter = Segmenter()
+        natasha_doc = Doc(text)
+        natasha_doc.segment(segmenter)
+        tokens = [token.text for token in natasha_doc.tokens]
+    else:
+        tokens = nltk.word_tokenize(text)
+
+    replace_tokens = []
+    for token in tokens:
+        if token.lower() in drugs_set:
+            replace_tokens.append(token)
+    replace_tokens.sort(key=lambda t: -len(t), )
+    for token in replace_tokens:
+        text = re.sub(token, drug_mask, text, flags=re.IGNORECASE)
+
+    return text
+
+
+def get_smiles_list(smiles_list, molecules_sep='~~~'):
+    preprocessed_smiles = []
+    for smile_str in smiles_list:
+        if smile_str is np.nan:
+            preprocessed_smiles.append([""])
+        else:
+            preprocessed_smiles.append(smile_str.split(molecules_sep))
+    return preprocessed_smiles
+
+
+def epoch_time(start_time, end_time):
+    elapsed_time = end_time - start_time
+    elapsed_mins = int(elapsed_time / 60)
+    elapsed_secs = int(elapsed_time - (elapsed_mins * 60))
+    return elapsed_mins, elapsed_secs
+
+
+def save_labels_probas(labels_path, probas_path, labels, probas):
+    with codecs.open(labels_path, 'w+', encoding="utf-8") as labels_file, \
+            codecs.open(probas_path, 'w+', encoding="utf-8") as probas_file:
+        for label, probability in zip(labels, probas):
+            labels_file.write(f"{label}\n")
+            probas_file.write(f"{probability}\n")
+
+
+def write_hyperparams(apply_upsampling, positive_class_weight, n_epochs, dropout, freeze_layer_count,
+                      freeze_embeddings_layer, text_model_name, output_path):
+    with codecs.open(output_path, 'w+', encoding="utf-8") as out_file:
+        out_file.write(f"model name: {text_model_name}\n")
+        out_file.write(f"Upsampling: {apply_upsampling}\nUpsampling_weight: {positive_class_weight}\n")
+        out_file.write(f"n_epochs: {n_epochs}\ndropout: {dropout}\n")
+        out_file.write(
+            f"freeze_layer_count : {freeze_layer_count}\nfreeze_embeddings_layer: {freeze_embeddings_layer}\n")
+
+
+def embedding_str_to_numpy(s):
+    numbers_strs = s.strip("[]").split()
+    emb_size = len(numbers_strs)
+    embedding = np.empty(shape=emb_size, dtype=np.float32)
+    for i in range(emb_size):
+        embedding[i] = np.float(numbers_strs[i])
+    return embedding
+
+
+def get_sider_emb_by_drugbank_id(drugbank_ids, sider_embs, drugs_sep='~', emb_size=1320):
+    if (type(drugbank_ids) == str and drugbank_ids.strip() == '') or drugbank_ids is np.nan:
+        embedding = np.zeros(shape=emb_size, dtype=np.float32)
+        return embedding
+    drugbank_ids_list = drugbank_ids.split(drugs_sep)
+
+    for drug_id in drugbank_ids_list:
+        if drug_id not in sider_embs:
+            embedding = np.zeros(shape=emb_size, dtype=np.float32)
+        else:
+            embedding = sider_embs[drug_id]
+        if np.isnan(embedding[0]):
+            continue
+        else:
+            return embedding
+    embedding = np.zeros(shape=emb_size, dtype=np.float32)
+    return embedding
+
+
+def load_drugs_dict(dict_path: str) -> Set[str]:
+    drugs = set()
+    with codecs.open(dict_path, 'r', encoding="utf-8") as inp_file:
+        for line in inp_file:
+            drugs.add(line.strip())
+    return drugs
+
+
+def load_drug_features(drug_features_path: str) -> Dict[str, np.array]:
+    drug_features_dict = {}
+    with codecs.open(drug_features_path, 'r', encoding="utf-8") as inp_file:
+        for line in inp_file:
+            attrs = line.strip().split('\t')
+            drugbank_id = attrs[0]
+            feature_vector = [float(x) for x in attrs[1].split()]
+            feature_vector = np.array(feature_vector, dtype=np.float32)
+            drug_features_dict[drugbank_id] = feature_vector
+    return drug_features_dict
+
+
+def split_drugs_ids_str(drugbank_ids_str: str) -> List[str]:
+    if drugbank_ids_str is np.nan:
+        return []
+    drug_ids_str = re.split(rf'[+~]', drugbank_ids_str)
+    return drug_ids_str
+
+
+def is_vector_zeros(vector: np.array) -> bool:
+    for value in vector:
+        if value != 0.0:
+            return False
+    return True
+
+
+def sample_drug_features(drug_features_dict: Dict[str, np.array], drug_features_size: int,
+                         drug_ids_list: List[str], sampling_type: str) -> np.array:
+
+    num_drugs = len(drug_ids_list)
+    if num_drugs > 0:
+        if sampling_type == "random":
+            perm = np.random.permutation(num_drugs)
+        else:
+            perm = range(num_drugs)
+        for i in perm:
+            drug_id = drug_ids_list[i]
+            drug_features = drug_features_dict.get(drug_id)
+            if drug_features is not None:
+                if not is_vector_zeros(drug_features):
+                    return drug_features
+
+    drug_features = np.zeros(shape=drug_features_size, dtype=np.float32)
+    return drug_features
