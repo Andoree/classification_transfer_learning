@@ -559,7 +559,7 @@ def main():
     use_weighted_loss = config.getboolean("PARAMETERS", "USE_WEIGHTED_LOSS")
     loss_weight = config.getfloat("PARAMETERS", "LOSS_WEIGHT")
     model_type = config["PARAMETERS"]["MODEL_TYPE"]
-    mask_drug_flag = config.get("PARAMETERS", "MASK_DRUG")
+    mask_drug_flag = config.getgetboolean("PARAMETERS", "MASK_DRUG")
     train_drug_sampling_type = config["PARAMETERS"]["DRUG_SAMPLING"]
     drug_features_path = config["PARAMETERS"]["DRUG_FEATURES_PATH"]
     if drug_features_path != "none":
