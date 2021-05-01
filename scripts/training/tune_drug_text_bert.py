@@ -8,16 +8,15 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.optim as optim
+from attention import BertCrossattLayer
 from sklearn.metrics import precision_score, f1_score, recall_score
 from torch import nn
 from torch.utils.data import Dataset
 from tqdm import tqdm
 from transformers import AutoModel, RobertaModel
 from transformers import AutoTokenizer
-
 from utils import mask_drug, get_smiles_list, epoch_time, save_labels_probas, write_hyperparams, \
     load_drugs_dict, load_drug_features, split_drugs_ids_str, sample_drug_features
-from attention import BertCrossattLayer
 
 device = "cuda" if torch.cuda.is_available else "cpu"
 
@@ -726,7 +725,8 @@ def main():
                              checkpoint_name,
                              cross_att_flag=cross_att_flag, drug_features_size=drug_features_size)
 
-        true_labels, dev_pred_labels, dev_pred_probas = predict(bert_classifier, dev_loader, use_drug_embeddings)
+        true_labels, dev_pred_labels, dev_pred_probas = predict(bert_classifier, dev_loader, use_drug_embeddings,
+                                                                drug_features_size=drug_features_size)
         assert len(dev_pred_labels) == len(true_labels)
         assert len(dev_pred_labels) == len(dev_pred_probas)
         dev_precision = precision_score(true_labels, dev_pred_labels)
@@ -735,7 +735,8 @@ def main():
 
         print(f"{dev_precision},{dev_recall},{dev_f1}")
 
-        true_labels, test_pred_labels, test_pred_probas = predict(bert_classifier, test_loader, use_drug_embeddings)
+        true_labels, test_pred_labels, test_pred_probas = predict(bert_classifier, test_loader, use_drug_embeddings,
+                                                                  drug_features_size=drug_features_size)
         assert len(test_pred_labels) == len(true_labels)
         assert len(test_pred_labels) == len(test_pred_probas)
         test_precision = precision_score(true_labels, test_pred_labels)
