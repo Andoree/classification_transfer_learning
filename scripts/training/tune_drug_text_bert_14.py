@@ -16,9 +16,9 @@ from tqdm import tqdm
 from transformers import AutoModel, RobertaModel
 from transformers import AutoTokenizer
 from utils import mask_drug, get_smiles_list, epoch_time, save_labels_probas, write_hyperparams, \
-    load_drugs_dict, load_drug_features, split_drugs_ids_str, sample_drug_features
+    load_drugs_dict, load_drug_features, split_drugs_ids_str, sample_drug_features, encode_smiles,\
+    get_drug_text_emb, encode_drug_text_mentions
 
-from scripts.training.utils import encode_smiles, get_drug_text_emb, encode_drug_text_mentions
 
 device = "cuda" if torch.cuda.is_available else "cpu"
 
