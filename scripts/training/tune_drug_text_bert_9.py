@@ -71,7 +71,7 @@ class TweetsDataset(Dataset):
         elif self.drug_text_emb_dict is not None:
             tweet_text = self.tweets[idx]
             drug_emb = get_drug_text_emb(text=tweet_text, drug_mention_emb_dict=self.drug_text_emb_dict,
-                                         sampling_type=self.sampling_type)
+                                         sampling_type=self.sampling_type, drug_features_size=self.drug_features_size)
             sample_dict["drug_features"] = drug_emb
 
         if self.tokenized_molecules is not None:
@@ -531,7 +531,7 @@ def get_row_sider_embedding(row):
 
 def main():
     config = configparser.ConfigParser()
-    config.read("tune_config.ini")
+    config.read("tune_config_9.ini")
     drug_embeddings_from = config["INPUT"]["DRUG_EMBEDDINGS_FROM"]
     max_length = config.getint("PARAMETERS", "MAX_TEXT_LENGTH")
     max_chemberta_length = config.getint("PARAMETERS", "MAX_MOLECULE_LENGTH")
@@ -626,6 +626,7 @@ def main():
             bert_text_encoder = AutoModel.from_pretrained(f"./models/{text_encoder_name}/model", ).to(device)
             drug_str_emb_dict = encode_drug_text_mentions(drugs_strs=drugs_dictionary, max_seq_length=max_length,
                                                           text_encoder=bert_text_encoder, text_tokenizer=text_tokenizer)
+            drug_features_size = len(list(drug_str_emb_dict.values())[0])
             bert_text_encoder = bert_text_encoder.cpu()
             del bert_text_encoder
     else:

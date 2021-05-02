@@ -186,7 +186,7 @@ def sample_drug_features(drug_features_dict: Dict[str, np.array], drug_features_
     return drug_features
 
 
-def get_drug_text_emb(text: str, drug_mention_emb_dict: Dict[str, np.array], sampling_type):
+def get_drug_text_emb(text: str, drug_mention_emb_dict: Dict[str, np.array], sampling_type, drug_features_size: int):
     ru_letters = set("абвгдеёжзийклмнопрстуфхцчъыьэюя")
     en_letters = set('abcdefghijklmnopqrstuvwxyz')
     ru_counter = 0
@@ -209,13 +209,16 @@ def get_drug_text_emb(text: str, drug_mention_emb_dict: Dict[str, np.array], sam
     for token in tokens:
         if token.lower() in drugs_set:
             drugs_text_mentions.append(token.lower())
-    if sampling_type == "random":
-        num_drug_mentions = len(drugs_text_mentions)
-        sampled_mention_id = randrange(num_drug_mentions)
-        sampled_mention_text = drugs_text_mentions[sampled_mention_id]
+    num_drug_mentions = len(drugs_text_mentions)
+    if num_drug_mentions > 0:
+        if sampling_type == "random":
+            sampled_mention_id = randrange(num_drug_mentions)
+            sampled_mention_text = drugs_text_mentions[sampled_mention_id]
+        else:
+            sampled_mention_text = drugs_text_mentions[0]
+        drug_text_emb = drug_mention_emb_dict[sampled_mention_text]
     else:
-        sampled_mention_text = drugs_text_mentions[0]
-    drug_text_emb = drug_mention_emb_dict[sampled_mention_text]
+        drug_text_emb = np.zeros(shape=drug_features_size, dtype=np.float32)
 
     return drug_text_emb
 
