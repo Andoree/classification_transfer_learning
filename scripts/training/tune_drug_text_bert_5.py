@@ -18,18 +18,21 @@ from transformers import AutoTokenizer
 from utils import mask_drug, get_smiles_list, epoch_time, save_labels_probas, write_hyperparams, \
     load_drugs_dict, load_drug_features, split_drugs_ids_str, sample_drug_features
 
+from scripts.training.utils import encode_smiles, get_drug_text_emb, encode_drug_text_mentions
+
 device = "cuda" if torch.cuda.is_available else "cpu"
 
 
 class TweetsDataset(Dataset):
     def __init__(self, tweets_df, text_tokenizer, molecule_tokenizer=None, molecule_max_length=256,
                  text_max_length=128, sampling_type="first", drugs_dictionary=None,
-                 drug_features_dict=None, drug_features_size=None):
+                 drug_features_dict=None, drug_features_size=None, drug_text_emb_dict=None):
         self.labels = tweets_df["class"].astype(np.float32).values
         self.text_max_length = text_max_length
         self.sampling_type = sampling_type
         self.molecule_max_length = molecule_max_length
         tweets = tweets_df.tweet.values
+        self.tweets = tweets
         if drugs_dictionary is not None:
             tweets = [mask_drug(text, drugs_set=drugs_dictionary, ) for text in tweets]
         self.tokenized_tweets = [text_tokenizer.encode_plus(x, max_length=self.text_max_length,
@@ -37,6 +40,8 @@ class TweetsDataset(Dataset):
                                                             return_tensors="pt", ) for x in tweets]
         if drug_features_dict is not None and drug_features_size is not None:
             self.drugbank_ids = [split_drugs_ids_str(drug_ids_str) for drug_ids_str in tweets_df.drug_id.values]
+        assert not (drug_text_emb_dict is not None and drug_features_dict is not None)
+        self.drug_text_emb_dict = drug_text_emb_dict
         self.tokenized_molecules = None
         self.drug_features_dict = drug_features_dict
         self.drug_features_size = drug_features_size
@@ -63,6 +68,11 @@ class TweetsDataset(Dataset):
                                                  drug_features_size=self.drug_features_size,
                                                  drug_ids_list=drug_ids_list, sampling_type=self.sampling_type)
             sample_dict["drug_features"] = drug_features
+        elif self.drug_text_emb_dict is not None:
+            tweet_text = self.tweets[idx]
+            drug_emb = get_drug_text_emb(text=tweet_text, drug_mention_emb_dict=self.drug_text_emb_dict,
+                                         sampling_type=self.sampling_type)
+            sample_dict["drug_features"] = drug_emb
 
         if self.tokenized_molecules is not None:
             if self.sampling_type == "random":
@@ -147,29 +157,6 @@ def train(model, iterator, optimizer, criterion, use_drug_embeddings=True, cross
         history.append(loss.cpu().data.numpy())
 
     return epoch_loss / (i + 1)
-
-
-def encode_smiles(model, tokenizer, smiles_list, max_length, molecules_sep='~~~'):
-    model.eval()
-    with torch.no_grad():
-        model_hidden_size = model.config.hidden_size
-        molecules_embeddings = []
-        for sample in tqdm(smiles_list, mininterval=7.0):
-            sample_embeddings = []
-            if sample is not np.nan:
-                molecules_smiles = sample.split(molecules_sep)
-                for smile_str in molecules_smiles:
-                    encoded_molecule = tokenizer.encode(smile_str, max_length=max_length,
-                                                        padding="max_length", truncation=True, return_tensors="pt").to(
-                        device)
-                    output = model(encoded_molecule, return_dict=True)
-                    cls_embedding = output["last_hidden_state"][0][0].cpu()
-                    sample_embeddings.append(cls_embedding)
-                mean_sample_embedding = torch.mean(torch.stack(sample_embeddings), dim=0)
-            else:
-                mean_sample_embedding = torch.zeros(size=[model_hidden_size, ], dtype=torch.float32)
-            molecules_embeddings.append(mean_sample_embedding)
-    return molecules_embeddings
 
 
 def evaluate(model, iterator, criterion, use_drug_embeddings, cross_att_flag=False, drug_features_size=None):
@@ -544,7 +531,7 @@ def get_row_sider_embedding(row):
 
 def main():
     config = configparser.ConfigParser()
-    config.read("tune_config_5.ini")
+    config.read("tune_config.ini")
     drug_embeddings_from = config["INPUT"]["DRUG_EMBEDDINGS_FROM"]
     max_length = config.getint("PARAMETERS", "MAX_TEXT_LENGTH")
     max_chemberta_length = config.getint("PARAMETERS", "MAX_MOLECULE_LENGTH")
@@ -562,15 +549,6 @@ def main():
     mask_drug_flag = config.getboolean("PARAMETERS", "MASK_DRUG")
     train_drug_sampling_type = config["PARAMETERS"]["DRUG_SAMPLING"]
     drug_features_path = config["PARAMETERS"]["DRUG_FEATURES_PATH"]
-    if drug_features_path != "none":
-        drug_features_dict = load_drug_features(drug_features_path)
-        drug_features_fname = os.path.basename(drug_features_path)
-        drug_features_str = drug_features_fname.split('.')[0]
-        drug_features_size = len(list(drug_features_dict.values())[0])
-    else:
-        drug_features_dict = None
-        drug_features_size = None
-        drug_features_str = ''
 
     output_dir = config["OUTPUT"]["OUTPUT_DIR"]
     if not os.path.exists(output_dir) and output_dir != '':
@@ -590,7 +568,6 @@ def main():
     torch.cuda.random.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
     data_dir = config["INPUT"]["INPUT_DIR"]
-    exp_description = f"{drug_features_str}"
 
     train_path = os.path.join(data_dir, "train.tsv")
     test_path = os.path.join(data_dir, "test.tsv")
@@ -599,12 +576,7 @@ def main():
     dev_df = pd.read_csv(dev_path, sep='\t', )
     test_df = pd.read_csv(test_path, sep='\t', )
 
-    drugs_dictionary = None
-    if mask_drug_flag:
-        exp_description += "_masking"
-        drugs_dict_path = config["PARAMETERS"]["DRUG_DICT_PATH"]
-        drugs_dictionary = load_drugs_dict(drugs_dict_path)
-
+    exp_description = ""
     if drug_embeddings_from == "chemberta":
         chemberta_model = RobertaModel.from_pretrained("./models/seyonec/ChemBERTa_zinc250k_v2_40k/model", ).to(
             device)
@@ -636,19 +608,50 @@ def main():
         criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight).to(device)
     else:
         criterion = nn.BCEWithLogitsLoss().to(device)
+
     text_tokenizer = AutoTokenizer.from_pretrained(f"./models/{text_encoder_name}/model", )
+    drug_str_emb_dict = None
+    drug_features_dict = None
+    drug_features_size = None
+    if drug_features_path != "none":
+        if drug_features_path != "text":
+            drug_features_dict = load_drug_features(drug_features_path)
+            drug_features_fname = os.path.basename(drug_features_path)
+            drug_features_str = drug_features_fname.split('.')[0]
+            drug_features_size = len(list(drug_features_dict.values())[0])
+        else:
+            drugs_dict_path = config["PARAMETERS"]["DRUG_DICT_PATH"]
+            drug_features_str = f"text_drug_{text_encoder_name.split('/')[-1]}"
+            drugs_dictionary = load_drugs_dict(drugs_dict_path)
+            bert_text_encoder = AutoModel.from_pretrained(f"./models/{text_encoder_name}/model", ).to(device)
+            drug_str_emb_dict = encode_drug_text_mentions(drugs_strs=drugs_dictionary, max_seq_length=max_length,
+                                                          text_encoder=bert_text_encoder, text_tokenizer=text_tokenizer)
+            bert_text_encoder = bert_text_encoder.cpu()
+            del bert_text_encoder
+    else:
+
+        drug_features_str = ''
+    exp_description = f"_{drug_features_str}"
+    drugs_dictionary = None
+    if mask_drug_flag:
+        exp_description += "_masking"
+        drugs_dict_path = config["PARAMETERS"]["DRUG_DICT_PATH"]
+        drugs_dictionary = load_drugs_dict(drugs_dict_path)
+
     chemberta_tokenizer = None
 
     train_tweets_dataset = TweetsDataset(train_df, text_tokenizer, text_max_length=max_length,
                                          drugs_dictionary=drugs_dictionary, drug_features_dict=drug_features_dict,
                                          molecule_tokenizer=chemberta_tokenizer, drug_features_size=drug_features_size,
-                                         sampling_type=train_drug_sampling_type)
+                                         sampling_type=train_drug_sampling_type, drug_text_emb_dict=drug_str_emb_dict)
     dev_tweets_dataset = TweetsDataset(dev_df, text_tokenizer, text_max_length=max_length,
                                        drug_features_dict=drug_features_dict, drug_features_size=drug_features_size,
-                                       drugs_dictionary=drugs_dictionary, molecule_tokenizer=chemberta_tokenizer, )
+                                       drugs_dictionary=drugs_dictionary, molecule_tokenizer=chemberta_tokenizer,
+                                       drug_text_emb_dict=drug_str_emb_dict)
     test_tweets_dataset = TweetsDataset(test_df, text_tokenizer, text_max_length=max_length,
                                         drug_features_dict=drug_features_dict, drug_features_size=drug_features_size,
-                                        drugs_dictionary=drugs_dictionary, molecule_tokenizer=chemberta_tokenizer, )
+                                        drugs_dictionary=drugs_dictionary, molecule_tokenizer=chemberta_tokenizer,
+                                        drug_text_emb_dict=drug_str_emb_dict)
     if apply_upsampling:
 
         positive_class_weight = config.getfloat("UPSAMPLING", "UPSAMPLING_WEIGHT")

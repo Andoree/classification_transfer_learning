@@ -1,10 +1,15 @@
 import codecs
 import re
+from random import randrange
 from typing import Set, Dict, List
 
 import nltk
 import numpy as np
+import torch
 from natasha import Segmenter, Doc
+from tqdm import tqdm
+
+device = "cuda" if torch.cuda.is_available else "cpu"
 
 
 def mask_drug(text: str, drugs_set: Set[str], drug_mask: str = "DRUG"):
@@ -77,6 +82,29 @@ def write_hyperparams(apply_upsampling, positive_class_weight, n_epochs, dropout
             f"freeze_layer_count : {freeze_layer_count}\nfreeze_embeddings_layer: {freeze_embeddings_layer}\n")
 
 
+def encode_smiles(model, tokenizer, smiles_list, max_length, molecules_sep='~~~'):
+    model.eval()
+    with torch.no_grad():
+        model_hidden_size = model.config.hidden_size
+        molecules_embeddings = []
+        for sample in tqdm(smiles_list, mininterval=7.0):
+            sample_embeddings = []
+            if sample is not np.nan:
+                molecules_smiles = sample.split(molecules_sep)
+                for smile_str in molecules_smiles:
+                    encoded_molecule = tokenizer.encode(smile_str, max_length=max_length,
+                                                        padding="max_length", truncation=True, return_tensors="pt").to(
+                        device)
+                    output = model(encoded_molecule, return_dict=True)
+                    cls_embedding = output["last_hidden_state"][0][0].cpu()
+                    sample_embeddings.append(cls_embedding)
+                mean_sample_embedding = torch.mean(torch.stack(sample_embeddings), dim=0)
+            else:
+                mean_sample_embedding = torch.zeros(size=[model_hidden_size, ], dtype=torch.float32)
+            molecules_embeddings.append(mean_sample_embedding)
+    return molecules_embeddings
+
+
 def embedding_str_to_numpy(s):
     numbers_strs = s.strip("[]").split()
     emb_size = len(numbers_strs)
@@ -141,7 +169,6 @@ def is_vector_zeros(vector: np.array) -> bool:
 
 def sample_drug_features(drug_features_dict: Dict[str, np.array], drug_features_size: int,
                          drug_ids_list: List[str], sampling_type: str) -> np.array:
-
     num_drugs = len(drug_ids_list)
     if num_drugs > 0:
         if sampling_type == "random":
@@ -157,3 +184,52 @@ def sample_drug_features(drug_features_dict: Dict[str, np.array], drug_features_
 
     drug_features = np.zeros(shape=drug_features_size, dtype=np.float32)
     return drug_features
+
+
+def get_drug_text_emb(text: str, drug_mention_emb_dict: Dict[str, np.array], sampling_type):
+    ru_letters = set("абвгдеёжзийклмнопрстуфхцчъыьэюя")
+    en_letters = set('abcdefghijklmnopqrstuvwxyz')
+    ru_counter = 0
+    en_counter = 0
+    for char in text:
+        if char in ru_letters:
+            ru_counter += 1
+        elif char in en_letters:
+            en_counter += 1
+    if ru_counter > en_counter:
+        segmenter = Segmenter()
+        natasha_doc = Doc(text)
+        natasha_doc.segment(segmenter)
+        tokens = [token.text for token in natasha_doc.tokens]
+    else:
+        tokens = nltk.word_tokenize(text)
+
+    drugs_text_mentions = []
+    drugs_set = set(list(drug_mention_emb_dict.keys()))
+    for token in tokens:
+        if token.lower() in drugs_set:
+            drugs_text_mentions.append(token.lower())
+    if sampling_type == "random":
+        num_drug_mentions = len(drugs_text_mentions)
+        sampled_mention_id = randrange(num_drug_mentions)
+        sampled_mention_text = drugs_text_mentions[sampled_mention_id]
+    else:
+        sampled_mention_text = drugs_text_mentions[0]
+    drug_text_emb = drug_mention_emb_dict[sampled_mention_text]
+
+    return drug_text_emb
+
+
+def encode_drug_text_mentions(drugs_strs: Set[str], max_seq_length: int, text_encoder, text_tokenizer) \
+        -> Dict[str, np.array]:
+    drug_str_emb_dict = {}
+    text_encoder.eval()
+    with torch.no_grad():
+        for drug_mention in drugs_strs:
+            tokenizer_output = text_tokenizer.encode(drug_mention, max_length=max_seq_length,
+                                                     padding="max_length", truncation=True, return_tensors="pt").to(
+                device)
+            output = text_encoder(tokenizer_output, return_dict=True)
+            cls_embedding = output["last_hidden_state"][0][0].cpu().numpy()
+            drug_str_emb_dict[drug_mention] = cls_embedding
+    return drug_str_emb_dict
