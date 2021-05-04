@@ -646,7 +646,7 @@ def main():
                                          drugs_dictionary=drugs_dictionary, drug_features_dict=drug_features_dict,
                                          molecule_tokenizer=chemberta_tokenizer, drug_features_size=drug_features_size,
                                          sampling_type=drug_sampling_type, drug_text_emb_dict=drug_str_emb_dict)
-    if drug_features_path == "none":
+    if drug_sampling_type == "random":
         drug_sampling_type = "first"
     dev_tweets_dataset = TweetsDataset(dev_df, text_tokenizer, text_max_length=max_length,
                                        drug_features_dict=drug_features_dict, drug_features_size=drug_features_size,
