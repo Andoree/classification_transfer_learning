@@ -531,7 +531,7 @@ def get_row_sider_embedding(row):
 
 def main():
     config = configparser.ConfigParser()
-    config.read("tune_config_7.ini")
+    config.read("tune_config.ini")
     drug_embeddings_from = config["INPUT"]["DRUG_EMBEDDINGS_FROM"]
     max_length = config.getint("PARAMETERS", "MAX_TEXT_LENGTH")
     max_chemberta_length = config.getint("PARAMETERS", "MAX_MOLECULE_LENGTH")
@@ -633,7 +633,7 @@ def main():
             del bert_text_encoder
     else:
         drug_features_str = ''
-    exp_description = f"_{drug_features_str}"
+    exp_description = f"_{drug_features_str}_{drug_sampling_type}"
     drugs_dictionary = None
     if mask_drug_flag:
         exp_description += "_masking"

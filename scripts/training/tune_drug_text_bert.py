@@ -633,7 +633,7 @@ def main():
             del bert_text_encoder
     else:
         drug_features_str = ''
-    exp_description = f"_{drug_features_str}"
+    exp_description = f"_{drug_features_str}_{drug_sampling_type}"
     drugs_dictionary = None
     if mask_drug_flag:
         exp_description += "_masking"
