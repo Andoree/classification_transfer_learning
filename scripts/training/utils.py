@@ -171,16 +171,32 @@ def sample_drug_features(drug_features_dict: Dict[str, np.array], drug_features_
                          drug_ids_list: List[str], sampling_type: str) -> np.array:
     num_drugs = len(drug_ids_list)
     if num_drugs > 0:
-        if sampling_type == "random":
-            perm = np.random.permutation(num_drugs)
+        if sampling_type != "mean" and sampling_type != "sum":
+            if sampling_type == "random":
+                perm = np.random.permutation(num_drugs)
+            else:
+                perm = range(num_drugs)
+            for i in perm:
+                drug_id = drug_ids_list[i]
+                drug_features = drug_features_dict.get(drug_id)
+                if drug_features is not None:
+                    if not is_vector_zeros(drug_features):
+                        return drug_features
         else:
-            perm = range(num_drugs)
-        for i in perm:
-            drug_id = drug_ids_list[i]
-            drug_features = drug_features_dict.get(drug_id)
-            if drug_features is not None:
-                if not is_vector_zeros(drug_features):
-                    return drug_features
+            drug_features_embs = []
+            for drug_id in drug_ids_list:
+                drug_features = drug_features_dict.get(drug_id)
+                if drug_features is not None and not is_vector_zeros(drug_features):
+                    drug_features_embs.append(drug_features)
+            if len(drug_features_embs) > 0:
+                drug_features_embs = np.array(drug_features_embs)
+                if sampling_type == "mean":
+                    drug_features = drug_features_embs.mean(axis=1)
+                elif sampling_type == "sum":
+                    drug_features = drug_features_embs.sum(axis=1)
+                else:
+                    raise ValueError(f"Invalid sampling type: {sampling_type}")
+                return drug_features
 
     drug_features = np.zeros(shape=drug_features_size, dtype=np.float32)
     return drug_features
@@ -209,14 +225,26 @@ def get_drug_text_emb(text: str, drug_mention_emb_dict: Dict[str, np.array], sam
     for token in tokens:
         if token.lower() in drugs_set:
             drugs_text_mentions.append(token.lower())
+    # drugs_text_mentions = np.array(drugs_text_mentions)
     num_drug_mentions = len(drugs_text_mentions)
     if num_drug_mentions > 0:
-        if sampling_type == "random":
-            sampled_mention_id = randrange(num_drug_mentions)
-            sampled_mention_text = drugs_text_mentions[sampled_mention_id]
+        if sampling_type != "mean" and sampling_type != "sum":
+            if sampling_type == "random":
+                sampled_mention_id = randrange(num_drug_mentions)
+                sampled_mention_text = drugs_text_mentions[sampled_mention_id]
+            else:
+                sampled_mention_text = drugs_text_mentions[0]
+            drug_text_emb = drug_mention_emb_dict[sampled_mention_text]
         else:
-            sampled_mention_text = drugs_text_mentions[0]
-        drug_text_emb = drug_mention_emb_dict[sampled_mention_text]
+            drugs_text_mentions_embs = [drug_mention_emb_dict[token] for token in drugs_text_mentions if
+                                        not is_vector_zeros(drug_mention_emb_dict[token])]
+            drugs_text_mentions_embs = np.array(drugs_text_mentions_embs)
+            if sampling_type == "mean":
+                drug_text_emb = drugs_text_mentions_embs.mean(axis=1)
+            elif sampling_type == "sum":
+                drug_text_emb = drugs_text_mentions_embs.sum(axis=1)
+            else:
+                raise ValueError(f"Invalid sampling type: {sampling_type}")
     else:
         drug_text_emb = np.zeros(shape=drug_features_size, dtype=np.float32)
 

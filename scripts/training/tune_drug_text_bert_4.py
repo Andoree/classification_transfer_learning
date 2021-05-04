@@ -547,7 +547,7 @@ def main():
     loss_weight = config.getfloat("PARAMETERS", "LOSS_WEIGHT")
     model_type = config["PARAMETERS"]["MODEL_TYPE"]
     mask_drug_flag = config.getboolean("PARAMETERS", "MASK_DRUG")
-    train_drug_sampling_type = config["PARAMETERS"]["DRUG_SAMPLING"]
+    drug_sampling_type = config["PARAMETERS"]["DRUG_SAMPLING"]
     drug_features_path = config["PARAMETERS"]["DRUG_FEATURES_PATH"]
 
     output_dir = config["OUTPUT"]["OUTPUT_DIR"]
@@ -618,6 +618,8 @@ def main():
             drug_features_dict = load_drug_features(drug_features_path)
             drug_features_fname = os.path.basename(drug_features_path)
             drug_features_str = drug_features_fname.split('.')[0]
+            if "atc" in drug_features_str and drug_sampling_type == "mean":
+                drug_sampling_type = "sum"
             drug_features_size = len(list(drug_features_dict.values())[0])
         else:
             drugs_dict_path = config["PARAMETERS"]["DRUG_DICT_PATH"]
@@ -630,7 +632,6 @@ def main():
             bert_text_encoder = bert_text_encoder.cpu()
             del bert_text_encoder
     else:
-
         drug_features_str = ''
     exp_description = f"_{drug_features_str}"
     drugs_dictionary = None
@@ -644,15 +645,17 @@ def main():
     train_tweets_dataset = TweetsDataset(train_df, text_tokenizer, text_max_length=max_length,
                                          drugs_dictionary=drugs_dictionary, drug_features_dict=drug_features_dict,
                                          molecule_tokenizer=chemberta_tokenizer, drug_features_size=drug_features_size,
-                                         sampling_type=train_drug_sampling_type, drug_text_emb_dict=drug_str_emb_dict)
+                                         sampling_type=drug_sampling_type, drug_text_emb_dict=drug_str_emb_dict)
+    if drug_features_path == "none":
+        drug_sampling_type = "first"
     dev_tweets_dataset = TweetsDataset(dev_df, text_tokenizer, text_max_length=max_length,
                                        drug_features_dict=drug_features_dict, drug_features_size=drug_features_size,
                                        drugs_dictionary=drugs_dictionary, molecule_tokenizer=chemberta_tokenizer,
-                                       drug_text_emb_dict=drug_str_emb_dict)
+                                       drug_text_emb_dict=drug_str_emb_dict, sampling_type=drug_sampling_type,)
     test_tweets_dataset = TweetsDataset(test_df, text_tokenizer, text_max_length=max_length,
                                         drug_features_dict=drug_features_dict, drug_features_size=drug_features_size,
                                         drugs_dictionary=drugs_dictionary, molecule_tokenizer=chemberta_tokenizer,
-                                        drug_text_emb_dict=drug_str_emb_dict)
+                                        drug_text_emb_dict=drug_str_emb_dict, sampling_type=drug_sampling_type,)
     if apply_upsampling:
 
         positive_class_weight = config.getfloat("UPSAMPLING", "UPSAMPLING_WEIGHT")
