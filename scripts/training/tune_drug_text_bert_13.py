@@ -531,7 +531,7 @@ def get_row_sider_embedding(row):
 
 def main():
     config = configparser.ConfigParser()
-    config.read("tune_config.ini")
+    config.read("tune_config_13.ini")
     drug_embeddings_from = config["INPUT"]["DRUG_EMBEDDINGS_FROM"]
     max_length = config.getint("PARAMETERS", "MAX_TEXT_LENGTH")
     max_chemberta_length = config.getint("PARAMETERS", "MAX_MOLECULE_LENGTH")
