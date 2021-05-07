@@ -372,126 +372,15 @@ class BertSimpleClassifier(nn.Module):
         return proba
 
 
-class BertClassifierWithDrugEmbeddings(nn.Module):
-    def __init__(self, bert_text_encoder, drug_enc_hid_dim, dropout, drug_features_size=None):
-        super().__init__()
-
-        self.bert_text_encoder = bert_text_encoder
-        # self.dropout = nn.Dropout(dropout)
-        bert_hidden_dim = bert_text_encoder.config.hidden_size
-        self.drug_features_size = drug_features_size
-        self.emb_dropout = nn.Dropout(p=dropout)
-        classifier_input_size = bert_hidden_dim + drug_enc_hid_dim
-        if drug_features_size is not None:
-            classifier_input_size += drug_features_size
-
-        self.classifier = nn.Sequential(
-            nn.GELU(),
-            nn.Linear(classifier_input_size, bert_hidden_dim),
-            nn.Dropout(p=dropout),
-            nn.GELU(),
-            nn.Linear(bert_hidden_dim, 1),
-        )
-
-    def forward(self, inputs, attention_mask, drug_embeddings, drug_features):
-        last_hidden_states = self.bert_text_encoder(inputs, attention_mask=attention_mask,
-                                                    return_dict=True)['last_hidden_state']
-        text_cls_embeddings = torch.stack([elem[0, :] for elem in last_hidden_states])
-        text_cls_embeddings = self.emb_dropout(text_cls_embeddings)
-        if self.drug_features_size is None:
-            concat_text_drug_embeddings = torch.cat([text_cls_embeddings, drug_embeddings], dim=1)
-        else:
-            concat_text_drug_embeddings = torch.cat([text_cls_embeddings, drug_embeddings, drug_features], dim=1)
-
-        proba = self.classifier(concat_text_drug_embeddings)
-        return proba
-
-
-class ConcatDoubleEncoderBertClassifieer(nn.Module):
-    def __init__(self, bert_text_encoder, bert_molecule_encoder, classifier_dropout, ):
-        super().__init__()
-
-        self.bert_text_encoder = bert_text_encoder
-        self.bert_molecule_encoder = bert_molecule_encoder
-        text_bert_hidden_dim = bert_text_encoder.config.hidden_size
-        molecule_bert_hidden_dim = bert_molecule_encoder.config.hidden_size
-
-        self.classifier = nn.Sequential(
-            nn.Dropout(p=classifier_dropout),
-            nn.GELU(),
-            nn.Linear(text_bert_hidden_dim + molecule_bert_hidden_dim, text_bert_hidden_dim),
-            nn.Dropout(p=classifier_dropout),
-            nn.GELU(),
-            nn.Linear(text_bert_hidden_dim, 1),
-        )
-
-    def forward(self, text_inputs, text_attention_mask, molecule_inputs, molecule_attention_mask, ):
-        text_last_hidden_states = self.bert_text_encoder(text_inputs, attention_mask=text_attention_mask,
-                                                         return_dict=True)['last_hidden_state']
-
-        molecule_last_hidden_states = \
-            self.bert_molecule_encoder(molecule_inputs, attention_mask=molecule_attention_mask,
-                                       return_dict=True)['last_hidden_state']
-        text_cls_embeddings = torch.stack([elem[0, :] for elem in text_last_hidden_states])
-        molecule_cls_embeddings = torch.stack([elem[0, :] for elem in molecule_last_hidden_states])
-        concat_text_drug_embeddings = torch.cat([text_cls_embeddings, molecule_cls_embeddings], dim=1)
-
-        proba = self.classifier(concat_text_drug_embeddings)
-        return proba
-
-
-class CrossModalityBertClassifier(nn.Module):
-    def __init__(self, bert_text_encoder, bert_molecule_encoder, classifier_dropout, cross_att_attention_dropout,
-                 cross_att_hidden_dropout, drug_features_size=None):
-        super().__init__()
-
-        self.bert_text_encoder = bert_text_encoder
-        self.bert_molecule_encoder = bert_molecule_encoder
-        self.drug_features_size = drug_features_size
-        text_bert_hidden_dim = bert_text_encoder.config.hidden_size
-        molecule_bert_hidden_dim = bert_molecule_encoder.config.hidden_size
-        num_attention_heads = text_bert_hidden_dim // 64
-        self.cross_attention_layer = BertCrossattLayer(text_bert_hidden_dim, molecule_bert_hidden_dim,
-                                                       cross_att_attention_dropout, cross_att_hidden_dropout,
-                                                       num_attention_heads=num_attention_heads)
-        classifier_input_size = text_bert_hidden_dim
-        if drug_features_size is not None:
-            classifier_input_size += drug_features_size
-        self.classifier = nn.Sequential(
-            nn.Dropout(p=classifier_dropout),
-            nn.GELU(),
-            nn.Linear(classifier_input_size, text_bert_hidden_dim),
-            nn.Dropout(p=classifier_dropout),
-            nn.GELU(),
-            nn.Linear(text_bert_hidden_dim, 1),
-        )
-
-    def forward(self, text_inputs, text_attention_mask, molecule_inputs, molecule_attention_mask, drug_features):
-        text_last_hidden_states = self.bert_text_encoder(text_inputs, attention_mask=text_attention_mask,
-                                                         return_dict=True)['last_hidden_state']
-        # text_cls_embeddings = torch.stack([elem[0, :] for elem in text_last_hidden_states])
-        molecule_last_hidden_states = \
-            self.bert_molecule_encoder(molecule_inputs, attention_mask=molecule_attention_mask,
-                                       return_dict=True)['last_hidden_state']
-        # molecule_cls_embeddings = torch.stack([elem[0, :] for elem in molecule_last_hidden_states])
-        cross_attention_output = self.cross_attention_layer(input_tensor=text_last_hidden_states,
-                                                            ctx_tensor=molecule_last_hidden_states, )
-        cross_att_output_cls_embs = torch.stack([elem[0, :] for elem in cross_attention_output])
-        if self.drug_features_size is not None:
-            cross_att_output_cls_embs = torch.cat([cross_att_output_cls_embs, drug_features], dim=1)
-        proba = self.classifier(cross_att_output_cls_embs)
-        return proba
-
-
 class DrugWithAttentionBertClassifier(nn.Module):
-    def __init__(self, bert_text_encoder, drug_enc_hid_dim, cross_att_attention_dropout,
+    def __init__(self, bert_text_encoder, drug_features_dim, cross_att_attention_dropout,
                  cross_att_hidden_dropout, classifier_dropout):
         super().__init__()
 
         self.bert_text_encoder = bert_text_encoder
         text_bert_hidden_dim = bert_text_encoder.config.hidden_size
         num_attention_heads = text_bert_hidden_dim // 64
-        self.cross_attention_layer = BertCrossattLayer(text_bert_hidden_dim, drug_enc_hid_dim,
+        self.cross_attention_layer = BertCrossattLayer(text_bert_hidden_dim, drug_features_dim,
                                                        cross_att_attention_dropout, cross_att_hidden_dropout,
                                                        num_attention_heads=num_attention_heads)
         self.classifier = nn.Sequential(
@@ -504,9 +393,9 @@ class DrugWithAttentionBertClassifier(nn.Module):
         )
 
     def forward(self, inputs, attention_mask, drug_embeddings):
-        test_last_hidden_states = self.bert_text_encoder(inputs, attention_mask=attention_mask,
+        text_last_hidden_states = self.bert_text_encoder(inputs, attention_mask=attention_mask,
                                                          return_dict=True)['last_hidden_state']
-        cross_attention_output = self.cross_attention_layer(input_tensor=test_last_hidden_states,
+        cross_attention_output = self.cross_attention_layer(input_tensor=text_last_hidden_states,
                                                             ctx_tensor=drug_embeddings, )
         cross_att_output_cls_embs = torch.stack([elem[0, :] for elem in cross_attention_output])
         proba = self.classifier(cross_att_output_cls_embs)
@@ -551,6 +440,8 @@ def main():
     parser.add_argument('--input_data_dir', type=str, )
     parser.add_argument('--drugs_dict_path', type=str, required=False)
     parser.add_argument('--upsampling_weight', type=float, required=False)
+    parser.add_argument('--crossatt_hidden_dropout', type=float, default=0.1, required=False)
+    parser.add_argument('--crossatt_dropout', type=float, default=0.1, required=False)
     args = parser.parse_args()
 
     max_length = args.max_length
@@ -727,9 +618,20 @@ def main():
 
         torch.manual_seed(seed)
         use_drug_embeddings = False
-        bert_classifier = BertSimpleClassifier(bert_text_encoder, dropout=dropout_p,
-                                               drug_features_size=drug_features_size).to(device)
-        checkpoint_name = f"simple_{text_encoder_name.split('/')[-1]}"
+        if model_type == "simple":
+            bert_classifier = BertSimpleClassifier(bert_text_encoder, dropout=dropout_p,
+                                                   drug_features_size=drug_features_size).to(device)
+        elif model_type == "attention":
+            crossatt_dropout = args.crossatt_dropout
+            crossatt_hidden_dropout = args.crossatt_hidden_dropout
+            bert_classifier = DrugWithAttentionBertClassifier(bert_text_encoder=bert_text_encoder,
+                                                              drug_features_dim=drug_features_size,
+                                                              cross_att_attention_dropout=crossatt_dropout,
+                                                              cross_att_hidden_dropout=crossatt_hidden_dropout,
+                                                              classifier_dropout=dropout_p).to(device)
+        else:
+            raise ValueError(f"Invalid model type: {model_type}")
+        checkpoint_name = f"{model_type}_{text_encoder_name.split('/')[-1]}"
         model_save_dir = os.path.join(output_dir,
                                       f"exp_{freeze_embeddings_layer}_{freeze_layer_count}{exp_description}/")
         train_evaluate_model(seed, bert_classifier, use_drug_embeddings, criterion, learning_rate, train_loader,
