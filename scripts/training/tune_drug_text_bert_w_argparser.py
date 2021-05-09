@@ -52,7 +52,7 @@ class TweetsDataset(Dataset):
                                                                              padding="max_length", truncation=True,
                                                                              return_tensors="pt", ) for x in
                                         smiles_list]
-        self.drug_embeddings = tweets_df.drug_embedding.values
+        # self.drug_embeddings = tweets_df.drug_embedding.values
         self.smiles = tweets_df.smiles.values
 
     def __getitem__(self, idx):
