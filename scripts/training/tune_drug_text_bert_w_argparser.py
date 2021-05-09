@@ -59,7 +59,7 @@ class TweetsDataset(Dataset):
         sample_dict = {
             "input_ids": self.tokenized_tweets[idx]["input_ids"][0],
             "attention_mask": self.tokenized_tweets[idx]["attention_mask"][0],
-            "drug_embeddings": self.drug_embeddings[idx],
+            # "drug_embeddings": self.drug_embeddings[idx],
             "labels": self.labels[idx]
         }
         if self.drug_features_dict is not None:
