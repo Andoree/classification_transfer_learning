@@ -9,14 +9,8 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from scripts.preprocessing.map_ru_tweets_to_drugbank import drug_list_to_token
-
-
-def list_replace(search, replacement, text):
-    search = [el for el in search if el in text]
-    for c in search:
-        text = text.replace(c, replacement)
-    return text
+from map_ru_tweets_to_drugbank import drug_list_to_token
+from preprocessing_utils import list_replace, clean_text
 
 
 def load_drugbank_dict(json_path):
@@ -32,34 +26,7 @@ def load_drugbank_dict(json_path):
 def get_fr_tweets_drugs(tweet_text, drugbank_dictionary):
     drugname_drugid_list = []
     found = False
-    tweet_text = list_replace('\u00C4', 'A', tweet_text)
-    tweet_text = list_replace('é', 'e', tweet_text)
-    tweet_text = list_replace('è', 'e', tweet_text)
-    tweet_text = list_replace('\u00E4', 'a', tweet_text)
-    tweet_text = tweet_text.replace('l’', ' ')
-    tweet_text = list_replace('\u00CB', 'E', tweet_text)
-    tweet_text = list_replace('\u00EB', 'e', tweet_text)
-    tweet_text = list_replace('\u1E26', 'H', tweet_text)
-    tweet_text = list_replace('\u1E27', 'h', tweet_text)
-    tweet_text = list_replace('\u00CF', 'I', tweet_text)
-    tweet_text = list_replace('\u00EF', 'i', tweet_text)
-    tweet_text = list_replace('\u00D6', 'O', tweet_text)
-    tweet_text = list_replace('\u00F6', 'o', tweet_text)
-    tweet_text = list_replace('\u00DC', 'U', tweet_text)
-    tweet_text = list_replace('\u00FC', 'u', tweet_text)
-    tweet_text = list_replace('\u0178', 'Y', tweet_text)
-    tweet_text = list_replace('\u00FF', 'y', tweet_text)
-    tweet_text = list_replace('\u00DF', 's', tweet_text)
-    tweet_text = list_replace('\u1E9E', 'S', tweet_text)
-    alphabet = list \
-            (
-            '\n абвгдеёзжийклмнопрстуфхцчшщьыъэюяАБВГДЕЁЗЖИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯ0123456789§"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ')
-
-    alphabet.append("'")
-    alphabet = set(alphabet)
-    alphabet = alphabet.difference(set(string.punctuation))
-    cleaned_text = [sym if sym in alphabet else ' ' for sym in tweet_text]
-    tweet_text = ''.join(cleaned_text)
+    tweet_text = clean_text(tweet_text)
     tokens_list = nltk.word_tokenize(tweet_text)
 
     for token in tokens_list:

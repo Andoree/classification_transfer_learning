@@ -1,3 +1,4 @@
+import string
 from typing import Dict
 
 import emoji
@@ -58,3 +59,42 @@ def preprocess_tweet_text(tweet: str, emoji_mapping: Dict[str, str], amp_repl: s
     new_tweet = replace_amps_and_links(tweet=new_tweet, repl=amp_repl)
     new_tweet = mask_username(tweet=new_tweet, )
     return new_tweet
+
+
+def clean_text(text: str) -> str:
+    text = list_replace('\u00C4', 'A', text)
+    text = list_replace('é', 'e', text)
+    text = list_replace('è', 'e', text)
+    text = list_replace('\u00E4', 'a', text)
+    text = text.replace('l’', ' ')
+    text = list_replace('\u00CB', 'E', text)
+    text = list_replace('\u00EB', 'e', text)
+    text = list_replace('\u1E26', 'H', text)
+    text = list_replace('\u1E27', 'h', text)
+    text = list_replace('\u00CF', 'I', text)
+    text = list_replace('\u00EF', 'i', text)
+    text = list_replace('\u00D6', 'O', text)
+    text = list_replace('\u00F6', 'o', text)
+    text = list_replace('\u00DC', 'U', text)
+    text = list_replace('\u00FC', 'u', text)
+    text = list_replace('\u0178', 'Y', text)
+    text = list_replace('\u00FF', 'y', text)
+    text = list_replace('\u00DF', 's', text)
+    text = list_replace('\u1E9E', 'S', text)
+    alphabet = list \
+            (
+            '\n абвгдеёзжийклмнопрстуфхцчшщьыъэюяАБВГДЕЁЗЖИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯ0123456789§"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ')
+
+    alphabet.append("'")
+    alphabet = set(alphabet)
+    alphabet = alphabet.difference(set(string.punctuation))
+    cleaned_text = [sym if sym in alphabet else ' ' for sym in text]
+    cleaned_text = ''.join(cleaned_text)
+    return cleaned_text
+
+
+def list_replace(search, replacement, text):
+    search = [el for el in search if el in text]
+    for c in search:
+        text = text.replace(c, replacement)
+    return text
