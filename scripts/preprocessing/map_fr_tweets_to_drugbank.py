@@ -1,0 +1,120 @@
+import codecs
+import json
+import os
+import string
+from argparse import ArgumentParser
+
+import nltk
+import numpy as np
+import pandas as pd
+from tqdm import tqdm
+
+from scripts.preprocessing.map_ru_tweets_to_drugbank import drug_list_to_token
+
+
+def list_replace(search, replacement, text):
+    search = [el for el in search if el in text]
+    for c in search:
+        text = text.replace(c, replacement)
+    return text
+
+
+def load_drugbank_dict(json_path):
+    drugname_to_drugbank_id = {}
+    with codecs.open(json_path, 'r', encoding="utf-8") as inp_file:
+        data = json.load(inp_file)
+        for drug_id, drugnames_list in data.items():
+            for drugname in drugnames_list:
+                drugname_to_drugbank_id[drugname.lower()] = drug_id
+    return drugname_to_drugbank_id
+
+
+def get_fr_tweets_drugs(tweet_text, drugbank_dictionary):
+    drugname_drugid_list = []
+    found = False
+    tweet_text = list_replace('\u00C4', 'A', tweet_text)
+    tweet_text = list_replace('é', 'e', tweet_text)
+    tweet_text = list_replace('è', 'e', tweet_text)
+    tweet_text = list_replace('\u00E4', 'a', tweet_text)
+    tweet_text = tweet_text.replace('l’', ' ')
+    tweet_text = list_replace('\u00CB', 'E', tweet_text)
+    tweet_text = list_replace('\u00EB', 'e', tweet_text)
+    tweet_text = list_replace('\u1E26', 'H', tweet_text)
+    tweet_text = list_replace('\u1E27', 'h', tweet_text)
+    tweet_text = list_replace('\u00CF', 'I', tweet_text)
+    tweet_text = list_replace('\u00EF', 'i', tweet_text)
+    tweet_text = list_replace('\u00D6', 'O', tweet_text)
+    tweet_text = list_replace('\u00F6', 'o', tweet_text)
+    tweet_text = list_replace('\u00DC', 'U', tweet_text)
+    tweet_text = list_replace('\u00FC', 'u', tweet_text)
+    tweet_text = list_replace('\u0178', 'Y', tweet_text)
+    tweet_text = list_replace('\u00FF', 'y', tweet_text)
+    tweet_text = list_replace('\u00DF', 's', tweet_text)
+    tweet_text = list_replace('\u1E9E', 'S', tweet_text)
+    alphabet = list \
+            (
+            '\n абвгдеёзжийклмнопрстуфхцчшщьыъэюяАБВГДЕЁЗЖИЙКЛМНОПРСТУФХЦЧШЩЬЫЪЭЮЯ0123456789§"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ')
+
+    alphabet.append("'")
+    alphabet = set(alphabet)
+    alphabet = alphabet.difference(set(string.punctuation))
+    cleaned_text = [sym if sym in alphabet else ' ' for sym in tweet_text]
+    tweet_text = ''.join(cleaned_text)
+    tokens_list = nltk.word_tokenize(tweet_text)
+
+    for token in tokens_list:
+        token = token.lower()
+        drug_id = drugbank_dictionary.get(token)
+        if drug_id is not None:
+            drugname_drugid_list.append((token, drug_id))
+            found = True
+    if not found:
+        drugname_drugid_list.append((np.nan, np.nan,))
+    return drugname_drugid_list
+
+
+def main():
+    parser = ArgumentParser()
+    parser.add_argument('--input_tweets_path', default=r"../../data/smm4h_2020_data/fr/preprocessed/dev.tsv")
+    parser.add_argument('--input_drugbank_path', default=r"../../data/drugbank_aliases.json")
+    parser.add_argument('--not_matched_path', default=r"../../data/smm4h_2020_data/fr/not_matched_fr_dev.tsv")
+    parser.add_argument('--output_path', default=r"../../data/smm4h_2020_data/fr/w_drugs/dev.tsv")
+    args = parser.parse_args()
+
+    input_tweets_path = args.input_tweets_path
+    input_drugbank_path = args.input_drugbank_path
+    not_matched_path = args.not_matched_path
+    output_dir = os.path.dirname(not_matched_path)
+    if not os.path.exists(output_dir) and not output_dir == '':
+        os.makedirs(output_dir)
+    output_path = args.output_path
+    output_dir = os.path.dirname(output_path)
+    if not os.path.exists(output_dir) and not output_dir == '':
+        os.makedirs(output_dir)
+    tweets_df = pd.read_csv(input_tweets_path, sep='\t', )
+    print("Tweets before duplicates drop:", tweets_df.shape[0])
+    if output_path.endswith("train.tsv"):
+        tweets_df.drop_duplicates(inplace=True)
+    print("Tweets after duplicates drop:", tweets_df.shape[0])
+
+    drugbank_dict = load_drugbank_dict(input_drugbank_path)
+    tweets_drugs = []
+    for tweet_text in tqdm(tweets_df.tweet.values):
+        tweet_drug = get_fr_tweets_drugs(tweet_text, drugbank_dict)
+        tweets_drugs.append(tweet_drug)
+
+    drug_names_list = [drug_list_to_token(t, '~', 0) for t in tweets_drugs]
+    drug_ids_list = [drug_list_to_token(t, '~', 1) for t in tweets_drugs]
+
+    tweets_df["drug_en_name"] = drug_names_list
+    tweets_df["drug_id"] = drug_ids_list
+    print("Not mapped tweets:", tweets_df.drug_id.isna().sum())
+    nan_df = tweets_df[tweets_df.drug_id.isnull()]
+    # tweets_df = tweets_df[~tweets_df.drug_id.isnull()]
+    print("Result shape:", tweets_df.shape)
+    tweets_df.to_csv(output_path, sep='\t', index=False, )
+    nan_df.to_csv(not_matched_path, sep='\t', index=False, )
+
+
+if __name__ == '__main__':
+    main()
