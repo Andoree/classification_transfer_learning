@@ -205,20 +205,28 @@ def sample_drug_features(drug_features_dict: Dict[str, np.array], drug_features_
 def get_drug_text_emb(text: str, drug_mention_emb_dict: Dict[str, np.array], sampling_type, drug_features_size: int):
     ru_letters = set("абвгдеёжзийклмнопрстуфхцчъыьэюя")
     en_letters = set('abcdefghijklmnopqrstuvwxyz')
+    fr_letters = set("abcdefghijklmnopqrstuvwxyzéèàùâêîôûëïüÿç")
     ru_counter = 0
     en_counter = 0
+    fr_counter = 0
     for char in text:
         if char in ru_letters:
             ru_counter += 1
-        elif char in en_letters:
+        if char in en_letters:
             en_counter += 1
-    if ru_counter > en_counter:
+        if char in fr_letters:
+            fr_counter += 1
+    if ru_counter > en_counter and ru_counter > fr_counter:
         segmenter = Segmenter()
         natasha_doc = Doc(text)
         natasha_doc.segment(segmenter)
         tokens = [token.text for token in natasha_doc.tokens]
-    else:
+    elif en_counter >= ru_counter and en_counter >= fr_counter:
         tokens = nltk.word_tokenize(text)
+    elif fr_counter > ru_counter and fr_counter > en_counter:
+        tokens = nltk.word_tokenize(text, language='french')
+    else:
+        raise Exception(f"Could not determine the language of the text: {text}")
 
     drugs_text_mentions = []
     drugs_set = set(list(drug_mention_emb_dict.keys()))
