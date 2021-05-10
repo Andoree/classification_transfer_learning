@@ -392,11 +392,11 @@ class DrugWithAttentionBertClassifier(nn.Module):
             nn.Linear(text_bert_hidden_dim, 1),
         )
 
-    def forward(self, inputs, attention_mask, drug_embeddings):
+    def forward(self, inputs, attention_mask, drug_features):
         text_last_hidden_states = self.bert_text_encoder(inputs, attention_mask=attention_mask,
                                                          return_dict=True)['last_hidden_state']
         cross_attention_output = self.cross_attention_layer(input_tensor=text_last_hidden_states,
-                                                            ctx_tensor=drug_embeddings, )
+                                                            ctx_tensor=drug_features, )
         cross_att_output_cls_embs = torch.stack([elem[0, :] for elem in cross_attention_output])
         proba = self.classifier(cross_att_output_cls_embs)
 
