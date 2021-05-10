@@ -26,6 +26,8 @@ class BertAttention(nn.Module):
     def transpose_for_scores(self, x):
         new_x_shape = x.size()[:-1] + (self.num_attention_heads, self.attention_head_size)
         x = x.view(*new_x_shape)
+        if len(x.size()) == 3:
+            x = x.unsqueeze(1)
         return x.permute(0, 2, 1, 3)
 
     def forward(self, hidden_states, context, attention_mask=None):
