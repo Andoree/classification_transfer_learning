@@ -87,3 +87,39 @@ class BertCrossattLayer(nn.Module):
         output = self.att(input_tensor, ctx_tensor, ctx_att_mask)
         attention_output = self.output(output, input_tensor)
         return attention_output
+
+
+class GatedMultimodalLayer(nn.Module):
+    """ Gated Multimodal Layer based on 'Gated multimodal networks, Arevalo1 et al.' (https://arxiv.org/abs/1702.01992) """
+
+    def __init__(self, size_in1, size_in2, size_out):
+        super().__init__()
+        self.size_in1, self.size_in2, self.size_out = size_in1, size_in2, size_out
+
+        # Weights hidden state modality 1
+        weights_hidden1 = torch.Tensor(size_out, size_in1)
+        self.weights_hidden1 = nn.Parameter(weights_hidden1)
+
+        # Weights hidden state modality 2
+        weights_hidden2 = torch.Tensor(size_out, size_in2)
+        self.weights_hidden2 = nn.Parameter(weights_hidden2)
+
+        # Weight for sigmoid
+        weight_sigmoid = torch.Tensor(size_out * 2)
+        self.weight_sigmoid = nn.Parameter(weight_sigmoid)
+
+        # initialize weights
+        nn.init.kaiming_uniform_(self.weights_hidden1, a=math.sqrt(5))
+        nn.init.kaiming_uniform_(self.weights_hidden2, a=math.sqrt(5))
+
+        # Activation functions
+        self.tanh_f = nn.Tanh()
+        self.sigmoid_f = nn.Sigmoid()
+
+    def forward(self, x1, x2):
+        h1 = self.tanh_f(torch.mm(x1, self.weights_hidden1.t()))
+        h2 = self.tanh_f(torch.mm(x2, self.weights_hidden2.t()))
+        x = torch.cat((h1, h2), dim=1)
+        z = self.sigmoid_f(torch.matmul(x, self.weight_sigmoid.t()))
+
+        return z.view(z.size()[0], 1) * h1 + (1 - z).view(z.size()[0], 1) * h2
