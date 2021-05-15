@@ -423,7 +423,8 @@ class DrugGMUBertClassifier(nn.Module):
     def forward(self, inputs, attention_mask, drug_features):
         text_last_hidden_states = self.bert_text_encoder(inputs, attention_mask=attention_mask,
                                                          return_dict=True)['last_hidden_state']
-        multimodal_emb = self.gated_multimodal_layer(text_last_hidden_states, drug_features)
+        text_cls_embeddings = torch.stack([elem[0, :] for elem in text_last_hidden_states])
+        multimodal_emb = self.gated_multimodal_layer(text_cls_embeddings, drug_features)
         proba = self.classifier(multimodal_emb)
 
         return proba
