@@ -94,14 +94,16 @@ class GatedMultimodalLayer(nn.Module):
 
     def __init__(self, size_in1, size_in2, size_out):
         super().__init__()
-        self.size_in1, self.size_in2, self.size_out = size_in1, size_in2, size_out
+        self.size_in1 = size_in1
+        self.size_in2 = size_in2
+        self.size_out = size_out
 
         # Weights hidden state modality 1
-        weights_hidden1 = torch.Tensor(size_out, size_in1)
-        self.weights_hidden1 = nn.Parameter(weights_hidden1)
+        weights_hidden1 = torch.Tensor(size_in1, size_out)
+        self.weights_hidden1 = nn.Parameter(weights_hidden1, requires_grad=True)
 
         # Weights hidden state modality 2
-        weights_hidden2 = torch.Tensor(size_out, size_in2)
+        weights_hidden2 = torch.Tensor(size_in2, size_out)
         self.weights_hidden2 = nn.Parameter(weights_hidden2)
 
         # Weight for sigmoid
@@ -109,17 +111,17 @@ class GatedMultimodalLayer(nn.Module):
         self.weight_sigmoid = nn.Parameter(weight_sigmoid)
 
         # initialize weights
-        nn.init.kaiming_uniform_(self.weights_hidden1, a=math.sqrt(5))
-        nn.init.kaiming_uniform_(self.weights_hidden2, a=math.sqrt(5))
+        nn.init.uniform_(self.weights_hidden1, )
+        nn.init.uniform_(self.weights_hidden2, )
 
         # Activation functions
         self.tanh_f = nn.Tanh()
         self.sigmoid_f = nn.Sigmoid()
 
     def forward(self, x1, x2):
-        h1 = self.tanh_f(torch.mm(x1, self.weights_hidden1.t()))
-        h2 = self.tanh_f(torch.mm(x2, self.weights_hidden2.t()))
-        x = torch.cat((h1, h2), dim=1)
-        z = self.sigmoid_f(torch.matmul(x, self.weight_sigmoid.t()))
+        h1 = self.tanh_f(torch.matmul(x1, self.weights_hidden1))  # B x size_out
+        h2 = self.tanh_f(torch.matmul(x2, self.weights_hidden2))  # B x size_out
+        x = torch.cat((h1, h2), dim=1)  # B x 2 * size_out
+        z = self.sigmoid_f(torch.matmul(x, self.weight_sigmoid)) # B
 
         return z.view(z.size()[0], 1) * h1 + (1 - z).view(z.size()[0], 1) * h2
