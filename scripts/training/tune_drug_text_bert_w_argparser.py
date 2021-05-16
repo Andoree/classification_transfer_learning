@@ -408,24 +408,25 @@ class DrugGMUBertClassifier(nn.Module):
 
         self.bert_text_encoder = bert_text_encoder
         text_bert_hidden_dim = bert_text_encoder.config.hidden_size
-        classifier_hidden_dim = text_bert_hidden_dim // 2
+        classifier_hidden_dim = text_bert_hidden_dim
         self.gated_multimodal_layer = GatedMultimodalLayer(text_bert_hidden_dim, drug_features_dim,
                                                            classifier_hidden_dim)
 
         self.classifier = nn.Sequential(
+            nn.BatchNorm1d(classifier_hidden_dim),
             nn.Dropout(p=classifier_dropout),
-            nn.GELU(),
-            nn.Linear(classifier_hidden_dim, classifier_hidden_dim),
-            nn.Dropout(p=classifier_dropout),
-            nn.GELU(),
+            # nn.GELU(),
+            #nn.Linear(classifier_hidden_dim, classifier_hidden_dim),
+            #nn.Dropout(p=classifier_dropout),
+            # nn.GELU(),
             nn.Linear(classifier_hidden_dim, 1),
         )
 
     def forward(self, inputs, attention_mask, drug_features):
-        text_last_hidden_states = self.bert_text_encoder(inputs, attention_mask=attention_mask,
-                                                         return_dict=True)['last_hidden_state']
-        text_cls_embeddings = torch.stack([elem[0, :] for elem in text_last_hidden_states])
-        multimodal_emb = self.gated_multimodal_layer(text_cls_embeddings, drug_features)
+        text_pooler_outputs = self.bert_text_encoder(inputs, attention_mask=attention_mask,
+                                                         return_dict=True)['pooler_output']
+        # text_cls_embeddings = torch.stack([elem[0, :] for elem in text_pooler_outputs])
+        multimodal_emb = self.gated_multimodal_layer(text_pooler_outputs, drug_features)
         proba = self.classifier(multimodal_emb)
 
         return proba
