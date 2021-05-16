@@ -110,7 +110,7 @@ class GatedMultimodalLayer(nn.Module):
         if self.resize_chem:
             weights_hidden_chem = torch.Tensor(chem_modality_dim, size_out)
             self.weights_hidden_chem = nn.Parameter(weights_hidden_chem, requires_grad=True)
-            nn.init.uniform_(self.weights_hidden_chem, )
+            nn.init.kaiming_uniform_(self.weights_hidden_chem, a=math.sqrt(5))
 
         # Weight for sigmoid
         weight_sigmoid = torch.Tensor(size_out * 2)
@@ -118,8 +118,8 @@ class GatedMultimodalLayer(nn.Module):
 
         # initialize weights
         #nn.init.uniform_(self.weights_hidden1, )
-        nn.init.kaiming_uniform_(self.weights_hidden1, a=math.sqrt(5))
-        nn.init.kaiming_uniform_(self.weights_hidden2, a=math.sqrt(5))
+        # nn.init.kaiming_uniform_(self.weights_hidden1, a=math.sqrt(5))
+        # nn.init.kaiming_uniform_(self.weights_hidden2, a=math.sqrt(5))
         nn.init.uniform_(self.weight_sigmoid,)
 
         # Activation functions
