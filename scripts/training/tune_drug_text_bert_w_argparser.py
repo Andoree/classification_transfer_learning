@@ -1,5 +1,4 @@
 import codecs
-import configparser
 import os
 import random
 import time
@@ -9,16 +8,16 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.optim as optim
-from attention import BertCrossattLayer
+from attention import BertCrossattLayer, GatedMultimodalLayer
 from sklearn.metrics import precision_score, f1_score, recall_score
 from torch import nn
 from torch.utils.data import Dataset
 from tqdm import tqdm
-from transformers import AutoModel, RobertaModel
+from transformers import AutoModel
 from transformers import AutoTokenizer
 from utils import mask_drug, get_smiles_list, epoch_time, save_labels_probas, write_hyperparams, \
-    load_drugs_dict, load_drug_features, split_drugs_ids_str, sample_drug_features, encode_smiles, \
-    get_drug_text_emb, encode_drug_text_mentions
+    load_drugs_dict, load_drug_features, split_drugs_ids_str, sample_drug_features, get_drug_text_emb, \
+    encode_drug_text_mentions
 
 device = "cuda" if torch.cuda.is_available else "cpu"
 
@@ -403,6 +402,36 @@ class DrugWithAttentionBertClassifier(nn.Module):
         return proba
 
 
+class DrugGMUBertClassifier(nn.Module):
+    def __init__(self, bert_text_encoder, drug_features_dim, classifier_dropout):
+        super().__init__()
+
+        self.bert_text_encoder = bert_text_encoder
+        text_bert_hidden_dim = bert_text_encoder.config.hidden_size
+        classifier_hidden_dim = text_bert_hidden_dim
+        self.gated_multimodal_layer = GatedMultimodalLayer(text_bert_hidden_dim, drug_features_dim,
+                                                           classifier_hidden_dim)
+
+        self.classifier = nn.Sequential(
+            nn.BatchNorm1d(classifier_hidden_dim),
+            nn.Dropout(p=classifier_dropout),
+            # nn.GELU(),
+            #nn.Linear(classifier_hidden_dim, classifier_hidden_dim),
+            #nn.Dropout(p=classifier_dropout),
+            # nn.GELU(),
+            nn.Linear(classifier_hidden_dim, 1),
+        )
+
+    def forward(self, inputs, attention_mask, drug_features):
+        text_pooler_outputs = self.bert_text_encoder(inputs, attention_mask=attention_mask,
+                                                         return_dict=True)['pooler_output']
+        # text_cls_embeddings = torch.stack([elem[0, :] for elem in text_pooler_outputs])
+        multimodal_emb = self.gated_multimodal_layer(text_pooler_outputs, drug_features)
+        proba = self.classifier(multimodal_emb)
+
+        return proba
+
+
 def clear():
     os.system('cls')
 
@@ -629,6 +658,10 @@ def main():
                                                               cross_att_attention_dropout=crossatt_dropout,
                                                               cross_att_hidden_dropout=crossatt_hidden_dropout,
                                                               classifier_dropout=dropout_p).to(device)
+        elif model_type == "gmu":
+            bert_classifier = DrugGMUBertClassifier(bert_text_encoder=bert_text_encoder,
+                                                    drug_features_dim=drug_features_size,
+                                                    classifier_dropout=dropout_p).to(device)
         else:
             raise ValueError(f"Invalid model type: {model_type}")
         checkpoint_name = f"{model_type}_{text_encoder_name.split('/')[-1]}"
