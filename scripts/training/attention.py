@@ -136,4 +136,4 @@ class GatedMultimodalLayer(nn.Module):
         x = torch.cat((text_hidden, chem_hidden), dim=1)  # B x 2 * size_out
         z = self.sigmoid_f(torch.matmul(x, self.weight_sigmoid))  # B
 
-        return z.view(z.size()[0], 1) * text_features + (1 - z).view(z.size()[0], 1) * chem_hidden
+        return z.view(z.size()[0], 1) * text_hidden + (1 - z).view(z.size()[0], 1) * chem_hidden
