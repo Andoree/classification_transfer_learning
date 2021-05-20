@@ -96,22 +96,28 @@ class GatedMultimodalLayer(nn.Module):
         super().__init__()
         self.text_modality_dim = text_modality_dim
         self.chem_modality_dim = chem_modality_dim
-        # if text_modality_dim == chem_modality_dim:
-        #     self.resize_chem = False
-        # else:
-        #     self.resize_chem = True
         self.size_out = size_out
+        if text_modality_dim == size_out:
+            self.resize_text = False
+        else:
+            self.resize_text = True
+        if chem_modality_dim == size_out:
+            self.resize_chem = False
+        else:
+            self.resize_chem = True
 
         # Weights hidden state modality 1
-        weights_hidden_text = torch.Tensor(text_modality_dim, size_out)
-        self.weights_hidden_text = nn.Parameter(weights_hidden_text, requires_grad=True)
-        nn.init.kaiming_uniform_(self.weights_hidden_text, a=math.sqrt(5))
+        if self.resize_text:
+            weights_hidden_text = torch.Tensor(text_modality_dim, size_out)
+            self.weights_hidden_text = nn.Parameter(weights_hidden_text, requires_grad=True)
+            nn.init.kaiming_uniform_(self.weights_hidden_text, nonlinearity="tanh")
 
         # Weights hidden state modality 2
         # if self.resize_chem:
-        weights_hidden_chem = torch.Tensor(chem_modality_dim, size_out)
-        self.weights_hidden_chem = nn.Parameter(weights_hidden_chem, requires_grad=True)
-        nn.init.kaiming_uniform_(self.weights_hidden_chem, a=math.sqrt(5))
+        if self.resize_chem:
+            weights_hidden_chem = torch.Tensor(chem_modality_dim, size_out)
+            self.weights_hidden_chem = nn.Parameter(weights_hidden_chem, requires_grad=True)
+            nn.init.kaiming_uniform_(self.weights_hidden_chem, nonlinearity="tanh")
 
         # Weight for sigmoid
         weight_sigmoid = torch.Tensor(size_out * 2)
@@ -121,16 +127,21 @@ class GatedMultimodalLayer(nn.Module):
         # nn.init.uniform_(self.weights_hidden1, )
         # nn.init.kaiming_uniform_(self.weights_hidden1, a=math.sqrt(5))
         # nn.init.kaiming_uniform_(self.weights_hidden2, a=math.sqrt(5))
-        nn.init.uniform_(self.weight_sigmoid, )
+        nn.init.uniform_(self.weight_sigmoid, -0.1, 0.1)
 
         # Activation functions
         self.tanh_f = nn.Tanh()
         self.sigmoid_f = nn.Sigmoid()
 
     def forward(self, text_features, chem_features):
-        text_hidden = self.tanh_f(torch.matmul(text_features, self.weights_hidden_text))  # B x size_out
-        # if self.resize_chem:
-        chem_hidden = self.tanh_f(torch.matmul(chem_features, self.weights_hidden_chem))  # B x size_out
+        if self.resize_text:
+            text_hidden = self.tanh_f(torch.matmul(text_features, self.weights_hidden_text))  # B x size_out
+        else:
+            text_hidden = text_features
+        if self.resize_chem:
+            chem_hidden = self.tanh_f(torch.matmul(chem_features, self.weights_hidden_chem))  # B x size_out
+        else:
+            chem_hidden = chem_features
         # else:
         # chem_hidden = chem_features
         x = torch.cat((text_hidden, chem_hidden), dim=1)  # B x 2 * size_out
