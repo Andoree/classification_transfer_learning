@@ -466,7 +466,7 @@ def main():
     parser.add_argument('--model_type', type=str, required=True)
     parser.add_argument('--mask_drug', action="store_true")
     parser.add_argument('--drug_sampling_type', type=str, required=True)
-    parser.add_argument('--drug_features_path', type=str, nargs='+', required=True)
+    parser.add_argument('--drug_features_paths', type=str, nargs='+', required=True)
     parser.add_argument('--output_dir', type=str, required=True)
     parser.add_argument('--output_evaluation_filename', type=str, default="evaluation.txt")
     parser.add_argument('--input_data_dir', type=str, required=True)
@@ -577,18 +577,18 @@ def main():
     chemberta_tokenizer = None
 
     train_tweets_dataset = TweetsDataset(train_df, text_tokenizer, text_max_length=max_length,
-                                         drugs_dictionary=drugs_dictionary, drug_features_dict=drug_features_dicts_list,
+                                         drugs_dictionary=drugs_dictionary, drug_features_list=drug_features_dicts_list,
                                          molecule_tokenizer=chemberta_tokenizer, drug_features_size=drug_features_size,
                                          sampling_type=drug_sampling_type, drug_text_emb_dict=drug_str_emb_dict)
     if drug_sampling_type == "random":
         drug_sampling_type = "first"
     dev_tweets_dataset = TweetsDataset(dev_df, text_tokenizer, text_max_length=max_length,
-                                       drug_features_dict=drug_features_dicts_list,
+                                       drug_features_list=drug_features_dicts_list,
                                        drug_features_size=drug_features_size,
                                        drugs_dictionary=drugs_dictionary, molecule_tokenizer=chemberta_tokenizer,
                                        drug_text_emb_dict=drug_str_emb_dict, sampling_type=drug_sampling_type, )
     test_tweets_dataset = TweetsDataset(test_df, text_tokenizer, text_max_length=max_length,
-                                        drug_features_dict=drug_features_dicts_list,
+                                        drug_features_list=drug_features_dicts_list,
                                         drug_features_size=drug_features_size,
                                         drugs_dictionary=drugs_dictionary, molecule_tokenizer=chemberta_tokenizer,
                                         drug_text_emb_dict=drug_str_emb_dict, sampling_type=drug_sampling_type, )
