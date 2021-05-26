@@ -65,7 +65,7 @@ class TweetsDataset(Dataset):
             drug_ids_list = self.drugbank_ids[idx]
             sample_drug_features_list = []
             for drug_features_dict in self.drug_features_list:
-                drug_features_size = list(drug_features_dict.values())[0]
+                drug_features_size = len(list(drug_features_dict.values())[0])
                 drug_features = sample_drug_features(drug_features_dict=drug_features_dict,
                                                      drug_features_size=drug_features_size,
                                                      drug_ids_list=drug_ids_list, sampling_type=self.sampling_type)
