@@ -25,7 +25,7 @@ device = "cuda" if torch.cuda.is_available else "cpu"
 class TweetsDataset(Dataset):
     def __init__(self, tweets_df, text_tokenizer, molecule_tokenizer=None, molecule_max_length=256,
                  text_max_length=128, sampling_type="first", drugs_dictionary=None,
-                 drug_features_dict=None, drug_features_size=None, drug_text_emb_dict=None):
+                 drug_features_list=None, drug_features_size=None, drug_text_emb_dict=None):
         self.labels = tweets_df["class"].astype(np.float32).values
         self.text_max_length = text_max_length
         self.sampling_type = sampling_type
@@ -37,12 +37,12 @@ class TweetsDataset(Dataset):
         self.tokenized_tweets = [text_tokenizer.encode_plus(x, max_length=self.text_max_length,
                                                             padding="max_length", truncation=True,
                                                             return_tensors="pt", ) for x in tweets]
-        if drug_features_dict is not None and drug_features_size is not None:
+        if drug_features_list is not None and drug_features_size is not None:
             self.drugbank_ids = [split_drugs_ids_str(drug_ids_str) for drug_ids_str in tweets_df.drug_id.values]
-        assert not (drug_text_emb_dict is not None and drug_features_dict is not None)
+        assert not (drug_text_emb_dict is not None and drug_features_list is not None)
         self.drug_text_emb_dict = drug_text_emb_dict
         self.tokenized_molecules = None
-        self.drug_features_dict = drug_features_dict
+        self.drug_features_list = drug_features_list
         self.drug_features_size = drug_features_size
 
         if molecule_tokenizer is not None:
@@ -61,12 +61,16 @@ class TweetsDataset(Dataset):
             # "drug_embeddings": self.drug_embeddings[idx],
             "labels": self.labels[idx]
         }
-        if self.drug_features_dict is not None:
+        if self.drug_features_list is not None:
             drug_ids_list = self.drugbank_ids[idx]
-            drug_features = sample_drug_features(drug_features_dict=self.drug_features_dict,
-                                                 drug_features_size=self.drug_features_size,
-                                                 drug_ids_list=drug_ids_list, sampling_type=self.sampling_type)
-            sample_dict["drug_features"] = drug_features
+            sample_drug_features_list = []
+            for drug_features_dict in self.drug_features_list:
+                drug_features = sample_drug_features(drug_features_dict=drug_features_dict,
+                                                     drug_features_size=self.drug_features_size,
+                                                     drug_ids_list=drug_ids_list, sampling_type=self.sampling_type)
+                sample_drug_features_list.extend(drug_features)
+            sample_drug_features_list = np.array(sample_drug_features_list)
+            sample_dict["drug_features"] = sample_drug_features_list
         elif self.drug_text_emb_dict is not None:
             tweet_text = self.tweets[idx]
             drug_emb = get_drug_text_emb(text=tweet_text, drug_mention_emb_dict=self.drug_text_emb_dict,
@@ -423,7 +427,7 @@ class DrugGMUBertClassifier(nn.Module):
 
     def forward(self, inputs, attention_mask, drug_features):
         text_pooler_outputs = self.bert_text_encoder(inputs, attention_mask=attention_mask,
-                                                         return_dict=True)['last_hidden_state']
+                                                     return_dict=True)['last_hidden_state']
         text_cls_embeddings = torch.stack([elem[0, :] for elem in text_pooler_outputs])
         multimodal_emb = self.gated_multimodal_layer(text_cls_embeddings, drug_features)
         proba = self.classifier(multimodal_emb)
@@ -462,7 +466,7 @@ def main():
     parser.add_argument('--model_type', type=str, required=True)
     parser.add_argument('--mask_drug', action="store_true")
     parser.add_argument('--drug_sampling_type', type=str, required=True)
-    parser.add_argument('--drug_features_path', type=str, required=True)
+    parser.add_argument('--drug_features_path', type=str, nargs='+', required=True)
     parser.add_argument('--output_dir', type=str, required=True)
     parser.add_argument('--output_evaluation_filename', type=str, default="evaluation.txt")
     parser.add_argument('--input_data_dir', type=str, required=True)
@@ -486,7 +490,7 @@ def main():
     model_type = args.model_type
     mask_drug_flag = args.mask_drug
     drug_sampling_type = args.drug_sampling_type
-    drug_features_path = args.drug_features_path
+    drug_features_paths = args.drug_features_paths
     output_dir = args.output_dir
 
     if not os.path.exists(output_dir) and output_dir != '':
@@ -534,16 +538,23 @@ def main():
 
     text_tokenizer = AutoTokenizer.from_pretrained(f"./models/{text_encoder_name}/model", )
     drug_str_emb_dict = None
-    drug_features_dict = None
+    # drug_features_dict = None
+    drug_features_dicts_list = None
     drug_features_size = None
-    if drug_features_path != "none":
-        if drug_features_path != "text":
-            drug_features_dict = load_drug_features(drug_features_path)
-            drug_features_fname = os.path.basename(drug_features_path)
-            drug_features_str = drug_features_fname.split('.')[0]
-            if "atc" in drug_features_str and drug_sampling_type == "mean":
-                drug_sampling_type = "sum"
-            drug_features_size = len(list(drug_features_dict.values())[0])
+    if drug_features_paths[0] != "none":
+        if drug_features_paths[0] != "text":
+            drug_features_dicts_list = []
+            drug_features_size = 0
+            drug_features_str = ''
+
+            for drug_feat_path in drug_features_paths:
+                features_dict = load_drug_features(drug_feat_path)
+                drug_features_dicts_list.append(features_dict)
+                drug_features_fname = os.path.basename(drug_feat_path)
+                drug_features_str += f"_{drug_features_fname.split('.')[0]}"
+                if "atc" in drug_features_str and drug_sampling_type == "mean":
+                    drug_sampling_type = "sum"
+                drug_features_size += len(list(features_dict.values())[0])
         else:
             drugs_dict_path = args.drugs_dict_path
             drug_features_str = f"text_drug_{text_encoder_name.split('/')[-1]}"
@@ -566,17 +577,19 @@ def main():
     chemberta_tokenizer = None
 
     train_tweets_dataset = TweetsDataset(train_df, text_tokenizer, text_max_length=max_length,
-                                         drugs_dictionary=drugs_dictionary, drug_features_dict=drug_features_dict,
+                                         drugs_dictionary=drugs_dictionary, drug_features_dict=drug_features_dicts_list,
                                          molecule_tokenizer=chemberta_tokenizer, drug_features_size=drug_features_size,
                                          sampling_type=drug_sampling_type, drug_text_emb_dict=drug_str_emb_dict)
     if drug_sampling_type == "random":
         drug_sampling_type = "first"
     dev_tweets_dataset = TweetsDataset(dev_df, text_tokenizer, text_max_length=max_length,
-                                       drug_features_dict=drug_features_dict, drug_features_size=drug_features_size,
+                                       drug_features_dict=drug_features_dicts_list,
+                                       drug_features_size=drug_features_size,
                                        drugs_dictionary=drugs_dictionary, molecule_tokenizer=chemberta_tokenizer,
                                        drug_text_emb_dict=drug_str_emb_dict, sampling_type=drug_sampling_type, )
     test_tweets_dataset = TweetsDataset(test_df, text_tokenizer, text_max_length=max_length,
-                                        drug_features_dict=drug_features_dict, drug_features_size=drug_features_size,
+                                        drug_features_dict=drug_features_dicts_list,
+                                        drug_features_size=drug_features_size,
                                         drugs_dictionary=drugs_dictionary, molecule_tokenizer=chemberta_tokenizer,
                                         drug_text_emb_dict=drug_str_emb_dict, sampling_type=drug_sampling_type, )
     if apply_upsampling:
