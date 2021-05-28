@@ -712,7 +712,7 @@ def main():
                 raise ValueError(f"Invalid model type: {model_type}")
             checkpoint_name = f"{model_type}_{text_encoder_name.split('/')[-1]}"
             model_save_dir = os.path.join(output_dir,
-                                          f"exp_{freeze_embeddings_layer}_{freeze_layer_count}{exp_description}/")
+                                          f"exp_{freeze_embeddings_layer}_{freeze_layer_count}{exp_description}_train_{train_size}/")
             train_evaluate_model(seed, bert_classifier, use_drug_embeddings, criterion, learning_rate, train_loader,
                                  dev_loader, test_loader, num_epochs, output_evaluation_path, model_save_dir,
                                  checkpoint_name,
