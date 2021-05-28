@@ -1,10 +1,12 @@
 import codecs
+import random
 import re
 from random import randrange
-from typing import Set, Dict, List
+from typing import Set, Dict, List, Tuple
 
 import nltk
 import numpy as np
+import pandas as pd
 import torch
 from natasha import Segmenter, Doc
 from tqdm import tqdm
@@ -72,14 +74,11 @@ def save_labels_probas(labels_path, probas_path, labels, probas):
             probas_file.write(f"{probability}\n")
 
 
-def write_hyperparams(apply_upsampling, positive_class_weight, n_epochs, dropout, freeze_layer_count,
-                      freeze_embeddings_layer, text_model_name, output_path):
+def write_hyperparams(args, output_path):
     with codecs.open(output_path, 'w+', encoding="utf-8") as out_file:
-        out_file.write(f"model name: {text_model_name}\n")
-        out_file.write(f"Upsampling: {apply_upsampling}\nUpsampling_weight: {positive_class_weight}\n")
-        out_file.write(f"n_epochs: {n_epochs}\ndropout: {dropout}\n")
-        out_file.write(
-            f"freeze_layer_count : {freeze_layer_count}\nfreeze_embeddings_layer: {freeze_embeddings_layer}\n")
+        for key, value in vars(args).items():
+            out_file.write(f"{key} : {value}")
+        out_file.flush()
 
 
 def encode_smiles(model, tokenizer, smiles_list, max_length, molecules_sep='~~~'):
@@ -272,3 +271,73 @@ def encode_drug_text_mentions(drugs_strs: Set[str], max_seq_length: int, text_en
             cls_embedding = output["last_hidden_state"][0][0].cpu().numpy()
             drug_str_emb_dict[drug_mention] = cls_embedding
     return drug_str_emb_dict
+
+
+def create_drug_id_tweet_ids_dict(data_df: pd.DataFrame) -> Tuple[Dict[str, List[int]], np.array]:
+    drug_id_tweet_ids_dict = {}
+    nan_drug_tweet_ids = []
+    for tweet_id, row in data_df.iterrows():
+        drug_ids_str = row["drug_id"]
+        if drug_ids_str is not np.nan:
+            drug_ids_list = re.split(rf'[+~]', drug_ids_str)
+            for drug_id in drug_ids_list:
+                if drug_id_tweet_ids_dict.get(drug_id) is None:
+                    drug_id_tweet_ids_dict[drug_id] = []
+                drug_id_tweet_ids_dict[drug_id].append(tweet_id)
+        else:
+            nan_drug_tweet_ids.append(tweet_id)
+    nan_drug_tweet_ids = np.array(nan_drug_tweet_ids)
+
+    return drug_id_tweet_ids_dict, nan_drug_tweet_ids
+
+
+def get_data_subset(data_df: pd.DataFrame, drug_id_tweet_ids_dict: Dict[str, List[int]], nan_tweet_ids: List[int],
+                    sample_size: int):
+    selected_tweet_ids = []
+    num_elems_to_sample = sample_size
+    while len(drug_id_tweet_ids_dict.keys()) > 0 and num_elems_to_sample > 0:
+        drug_ids_list = list(drug_id_tweet_ids_dict.keys())
+        num_unique_drug_ids = len(drug_ids_list)
+        # Generating drug_ids sampling order
+        drugs_iteration_random_order = random.sample(range(0, num_unique_drug_ids), num_unique_drug_ids)
+        for i in drugs_iteration_random_order:
+            drug_id = drug_ids_list[i]
+            candidate_tweets_ids = drug_id_tweet_ids_dict[drug_id]
+            num_candidates = len(candidate_tweets_ids)
+            if num_candidates > 0:
+                # Sampling a random tweet of the given drug_id
+                sampled_candidate_id = random.randrange(num_candidates)
+                sampled_tweet_id = candidate_tweets_ids[sampled_candidate_id]
+
+                selected_tweet_ids.append(sampled_tweet_id)
+                sampled_tweet_drug_ids_list = re.split(rf'[+~]', data_df.iloc[sampled_tweet_id]["drug_id"])
+                # Removing sampled tweet's id from other drug_ids' entries
+                for d_i in sampled_tweet_drug_ids_list:
+                    tweet_ids_list = drug_id_tweet_ids_dict[d_i]
+                    tweet_ids_list.remove(sampled_tweet_id)
+
+                num_elems_to_sample -= 1
+                if num_elems_to_sample == 0:
+                    break
+        for d_i in drug_ids_list:
+            tweet_ids_list = drug_id_tweet_ids_dict[d_i]
+            if len(tweet_ids_list) == 0:
+                del drug_id_tweet_ids_dict[d_i]
+    if num_elems_to_sample > 0:
+        nan_sample_size = min(num_elems_to_sample, len(nan_tweet_ids))
+        sampled_nan_ids = random.sample(range(0, nan_sample_size), nan_sample_size)
+        selected_nan_tweets = nan_tweet_ids[sampled_nan_ids]
+        selected_tweet_ids.extend(selected_nan_tweets)
+    sampled_data_df = data_df.iloc[selected_tweet_ids]
+    return sampled_data_df
+
+
+def inclusive_range(start, stop, step):
+    """
+    Python's standard range(start, stop, step),
+    but it always returns the right border (stop)
+    """
+    for i in range(start, stop, step,):
+        yield i
+    if i != stop:
+        yield stop

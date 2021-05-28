@@ -17,7 +17,7 @@ from transformers import AutoModel
 from transformers import AutoTokenizer
 from utils import mask_drug, get_smiles_list, epoch_time, save_labels_probas, write_hyperparams, \
     load_drugs_dict, load_drug_features, split_drugs_ids_str, sample_drug_features, get_drug_text_emb, \
-    encode_drug_text_mentions
+    encode_drug_text_mentions, inclusive_range, create_drug_id_tweet_ids_dict, get_data_subset
 
 device = "cuda" if torch.cuda.is_available else "cpu"
 
@@ -468,13 +468,17 @@ def main():
     parser.add_argument('--mask_drug', action="store_true")
     parser.add_argument('--drug_sampling_type', type=str, required=True)
     parser.add_argument('--drug_features_paths', type=str, nargs='+', required=True)
-    parser.add_argument('--output_dir', type=str, required=True)
-    parser.add_argument('--output_evaluation_filename', type=str, default="evaluation.txt")
     parser.add_argument('--input_data_dir', type=str, required=True)
     parser.add_argument('--drugs_dict_path', type=str, required=False)
+    parser.add_argument('--output_dir', type=str, required=True)
+    parser.add_argument('--output_evaluation_filename', type=str, default="evaluation.txt")
     parser.add_argument('--upsampling_weight', type=float, required=False)
     parser.add_argument('--crossatt_hidden_dropout', type=float, default=0.1, required=False)
     parser.add_argument('--crossatt_dropout', type=float, default=0.1, required=False)
+    parser.add_argument('--use_train_subsets', action="store_true")
+    parser.add_argument('--train_subsets_min_size', type=int, default=250)
+    parser.add_argument('--train_subsets_max_size', type=int, default=-1)
+    parser.add_argument('--train_subsets_step', type=int, default=250)
     args = parser.parse_args()
 
     max_length = args.max_length
@@ -490,6 +494,7 @@ def main():
     loss_weight = args.loss_weight
     model_type = args.model_type
     mask_drug_flag = args.mask_drug
+    use_train_subsets = args.use_train_subsets
     drug_sampling_type = args.drug_sampling_type
     drug_features_paths = args.drug_features_paths
     output_dir = args.output_dir
@@ -520,10 +525,13 @@ def main():
     test_df = pd.read_csv(test_path, sep='\t', )
 
     exp_description = ""
+    train_size = train_df.shape[0]
+    dev_size = dev_df.shape[0]
+    test_size = test_df.shape[0]
     print(
-        f"Datasets sizes: mono_train {train_df.shape[0]},\n"
-        f"dev: {dev_df.shape[0]},\n"
-        f"test: {test_df.shape[0]}")
+        f"Datasets sizes: train {train_size},\n"
+        f"dev: {dev_size},\n"
+        f"test: {test_size}")
 
     if use_weighted_loss:
         if loss_weight < 0:
@@ -576,11 +584,12 @@ def main():
         drugs_dictionary = load_drugs_dict(drugs_dict_path)
 
     chemberta_tokenizer = None
-
+    train_drug_sampling_type = drug_sampling_type
     train_tweets_dataset = TweetsDataset(train_df, text_tokenizer, text_max_length=max_length,
                                          drugs_dictionary=drugs_dictionary, drug_features_list=drug_features_dicts_list,
                                          molecule_tokenizer=chemberta_tokenizer, drug_features_size=drug_features_size,
-                                         sampling_type=drug_sampling_type, drug_text_emb_dict=drug_str_emb_dict)
+                                         sampling_type=train_drug_sampling_type, drug_text_emb_dict=drug_str_emb_dict)
+
     if drug_sampling_type == "random":
         drug_sampling_type = "first"
     dev_tweets_dataset = TweetsDataset(dev_df, text_tokenizer, text_max_length=max_length,
@@ -594,7 +603,6 @@ def main():
                                         drugs_dictionary=drugs_dictionary, molecule_tokenizer=chemberta_tokenizer,
                                         drug_text_emb_dict=drug_str_emb_dict, sampling_type=drug_sampling_type, )
     if apply_upsampling:
-
         positive_class_weight = args.upsampling_weight
         assert positive_class_weight is not None
         exp_description += f"_upsampling_{positive_class_weight}"
@@ -615,112 +623,137 @@ def main():
     setup_dir = os.path.dirname(setup_path)
     if not os.path.exists(setup_dir) and setup_dir != '':
         os.makedirs(setup_dir)
-    write_hyperparams(apply_upsampling, positive_class_weight, num_epochs, dropout_p, freeze_layer_count,
-                      freeze_embeddings_layer, text_encoder_name, setup_path)
-    for seed in seeds_list:
-        experiment_dir = f"exp_{freeze_embeddings_layer}_{freeze_layer_count}{exp_description}/seed_{seed}"
-        experiment_dir = os.path.join(output_dir, experiment_dir)
-        if not os.path.exists(experiment_dir) and experiment_dir != '':
-            os.makedirs(experiment_dir)
+    write_hyperparams(args, setup_path)
 
-        torch.manual_seed(seed)
-        torch.random.manual_seed(seed)
-        os.environ['PYTHONHASHSEED'] = str(seed)
-        random.seed(seed)
-        np.random.seed(seed)
-        torch.cuda.random.manual_seed(seed)
-        torch.cuda.random.manual_seed_all(seed)
-        torch.backends.cudnn.deterministic = True
+    if use_train_subsets:
+        train_subsets_min_size = args.train_subsets_min_size
+        train_subsets_max_size = args.train_subsets_max_size
+        train_subsets_step = args.train_subsets_step
 
-        bert_text_encoder = AutoModel.from_pretrained(f"./models/{text_encoder_name}/model", )
+        if train_subsets_max_size == -1:
+            train_subsets_max_size = train_df.shape[0]
+        train_range = inclusive_range(train_subsets_min_size, train_subsets_max_size, train_subsets_step, )
+    else:
+        train_range = [train_size, ]
+    for train_size in train_range:
+        print(f"Train subset size: {train_size}")
+        if use_train_subsets:
+            drug_id_tweet_ids_dict, nan_drug_tweet_ids = create_drug_id_tweet_ids_dict(train_df)
 
-        if freeze_layer_count > 0:
-            for layer in bert_text_encoder.encoder.layer[:freeze_layer_count]:
-                for param in layer.parameters():
+            train_subset_df = get_data_subset(train_df, drug_id_tweet_ids_dict, nan_drug_tweet_ids,
+                                              sample_size=train_size)
+            train_tweets_dataset = TweetsDataset(train_subset_df, text_tokenizer, text_max_length=max_length,
+                                                 drugs_dictionary=drugs_dictionary,
+                                                 drug_features_list=drug_features_dicts_list,
+                                                 molecule_tokenizer=chemberta_tokenizer,
+                                                 drug_features_size=drug_features_size,
+                                                 sampling_type=train_drug_sampling_type,
+                                                 drug_text_emb_dict=drug_str_emb_dict)
+
+        for seed in seeds_list:
+            experiment_dir = f"exp_{freeze_embeddings_layer}_{freeze_layer_count}{exp_description}_train_{train_size}/seed_{seed}"
+            experiment_dir = os.path.join(output_dir, experiment_dir)
+            if not os.path.exists(experiment_dir) and experiment_dir != '':
+                os.makedirs(experiment_dir)
+
+            torch.manual_seed(seed)
+            torch.random.manual_seed(seed)
+            os.environ['PYTHONHASHSEED'] = str(seed)
+            random.seed(seed)
+            np.random.seed(seed)
+            torch.cuda.random.manual_seed(seed)
+            torch.cuda.random.manual_seed_all(seed)
+            torch.backends.cudnn.deterministic = True
+
+            bert_text_encoder = AutoModel.from_pretrained(f"./models/{text_encoder_name}/model", )
+
+            if freeze_layer_count > 0:
+                for layer in bert_text_encoder.encoder.layer[:freeze_layer_count]:
+                    for param in layer.parameters():
+                        param.requires_grad = False
+
+            if freeze_embeddings_layer:
+                for param in bert_text_encoder.embeddings.parameters():
                     param.requires_grad = False
+            print("#Trainable params: ", sum(p.numel() for p in bert_text_encoder.parameters() if p.requires_grad))
 
-        if freeze_embeddings_layer:
-            for param in bert_text_encoder.embeddings.parameters():
-                param.requires_grad = False
-        print("#Trainable params: ", sum(p.numel() for p in bert_text_encoder.parameters() if p.requires_grad))
+            num_workers = 4
 
-        num_workers = 4
+            train_loader = torch.utils.data.DataLoader(
+                train_tweets_dataset, batch_size=batch_size, num_workers=num_workers, sampler=sampler, shuffle=shuffle,
+                drop_last=True,
+            )
+            dev_loader = torch.utils.data.DataLoader(
+                dev_tweets_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
+            )
+            test_loader = torch.utils.data.DataLoader(
+                test_tweets_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
+            )
+            cross_att_flag = False
 
-        train_loader = torch.utils.data.DataLoader(
-            train_tweets_dataset, batch_size=batch_size, num_workers=num_workers, sampler=sampler, shuffle=shuffle,
-            drop_last=True,
-        )
-        dev_loader = torch.utils.data.DataLoader(
-            dev_tweets_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
-        )
-        test_loader = torch.utils.data.DataLoader(
-            test_tweets_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
-        )
-        cross_att_flag = False
+            torch.manual_seed(seed)
+            use_drug_embeddings = False
+            if model_type == "simple":
+                bert_classifier = BertSimpleClassifier(bert_text_encoder, dropout=dropout_p,
+                                                       drug_features_size=drug_features_size).to(device)
+            elif model_type == "attention":
+                crossatt_dropout = args.crossatt_dropout
+                crossatt_hidden_dropout = args.crossatt_hidden_dropout
+                bert_classifier = DrugWithAttentionBertClassifier(bert_text_encoder=bert_text_encoder,
+                                                                  drug_features_dim=drug_features_size,
+                                                                  cross_att_attention_dropout=crossatt_dropout,
+                                                                  cross_att_hidden_dropout=crossatt_hidden_dropout,
+                                                                  classifier_dropout=dropout_p).to(device)
+            elif model_type == "gmu":
+                bert_classifier = DrugGMUBertClassifier(bert_text_encoder=bert_text_encoder,
+                                                        drug_features_dim=drug_features_size,
+                                                        classifier_dropout=dropout_p).to(device)
+            else:
+                raise ValueError(f"Invalid model type: {model_type}")
+            checkpoint_name = f"{model_type}_{text_encoder_name.split('/')[-1]}"
+            model_save_dir = os.path.join(output_dir,
+                                          f"exp_{freeze_embeddings_layer}_{freeze_layer_count}{exp_description}/")
+            train_evaluate_model(seed, bert_classifier, use_drug_embeddings, criterion, learning_rate, train_loader,
+                                 dev_loader, test_loader, num_epochs, output_evaluation_path, model_save_dir,
+                                 checkpoint_name,
+                                 cross_att_flag=cross_att_flag, drug_features_size=drug_features_size)
 
-        torch.manual_seed(seed)
-        use_drug_embeddings = False
-        if model_type == "simple":
-            bert_classifier = BertSimpleClassifier(bert_text_encoder, dropout=dropout_p,
-                                                   drug_features_size=drug_features_size).to(device)
-        elif model_type == "attention":
-            crossatt_dropout = args.crossatt_dropout
-            crossatt_hidden_dropout = args.crossatt_hidden_dropout
-            bert_classifier = DrugWithAttentionBertClassifier(bert_text_encoder=bert_text_encoder,
-                                                              drug_features_dim=drug_features_size,
-                                                              cross_att_attention_dropout=crossatt_dropout,
-                                                              cross_att_hidden_dropout=crossatt_hidden_dropout,
-                                                              classifier_dropout=dropout_p).to(device)
-        elif model_type == "gmu":
-            bert_classifier = DrugGMUBertClassifier(bert_text_encoder=bert_text_encoder,
-                                                    drug_features_dim=drug_features_size,
-                                                    classifier_dropout=dropout_p).to(device)
-        else:
-            raise ValueError(f"Invalid model type: {model_type}")
-        checkpoint_name = f"{model_type}_{text_encoder_name.split('/')[-1]}"
-        model_save_dir = os.path.join(output_dir,
-                                      f"exp_{freeze_embeddings_layer}_{freeze_layer_count}{exp_description}/")
-        train_evaluate_model(seed, bert_classifier, use_drug_embeddings, criterion, learning_rate, train_loader,
-                             dev_loader, test_loader, num_epochs, output_evaluation_path, model_save_dir,
-                             checkpoint_name,
-                             cross_att_flag=cross_att_flag, drug_features_size=drug_features_size)
+            true_labels, dev_pred_labels, dev_pred_probas = predict(bert_classifier, dev_loader, use_drug_embeddings,
+                                                                    drug_features_size=drug_features_size)
+            assert len(dev_pred_labels) == len(true_labels)
+            assert len(dev_pred_labels) == len(dev_pred_probas)
+            dev_precision = precision_score(true_labels, dev_pred_labels)
+            dev_recall = recall_score(true_labels, dev_pred_labels)
+            dev_f1 = f1_score(true_labels, dev_pred_labels)
 
-        true_labels, dev_pred_labels, dev_pred_probas = predict(bert_classifier, dev_loader, use_drug_embeddings,
-                                                                drug_features_size=drug_features_size)
-        assert len(dev_pred_labels) == len(true_labels)
-        assert len(dev_pred_labels) == len(dev_pred_probas)
-        dev_precision = precision_score(true_labels, dev_pred_labels)
-        dev_recall = recall_score(true_labels, dev_pred_labels)
-        dev_f1 = f1_score(true_labels, dev_pred_labels)
+            print(f"{dev_precision},{dev_recall},{dev_f1}")
 
-        print(f"{dev_precision},{dev_recall},{dev_f1}")
+            true_labels, test_pred_labels, test_pred_probas = predict(bert_classifier, test_loader, use_drug_embeddings,
+                                                                      drug_features_size=drug_features_size)
+            assert len(test_pred_labels) == len(true_labels)
+            assert len(test_pred_labels) == len(test_pred_probas)
+            test_precision = precision_score(true_labels, test_pred_labels)
+            test_recall = recall_score(true_labels, test_pred_labels)
+            test_f1 = f1_score(true_labels, test_pred_labels)
+            print(f"{test_precision},{test_recall},{test_f1}")
 
-        true_labels, test_pred_labels, test_pred_probas = predict(bert_classifier, test_loader, use_drug_embeddings,
-                                                                  drug_features_size=drug_features_size)
-        assert len(test_pred_labels) == len(true_labels)
-        assert len(test_pred_labels) == len(test_pred_probas)
-        test_precision = precision_score(true_labels, test_pred_labels)
-        test_recall = recall_score(true_labels, test_pred_labels)
-        test_f1 = f1_score(true_labels, test_pred_labels)
-        print(f"{test_precision},{test_recall},{test_f1}")
+            exp_scores_path = os.path.join(experiment_dir, "scores.txt")
+            with codecs.open(exp_scores_path, 'a+', encoding="utf-8") as out_file:
+                out_file.write(
+                    f"{seed},{train_size},{dev_precision},{dev_recall},{dev_f1},{test_precision},{test_recall},{test_f1}\n")
 
-        exp_scores_path = os.path.join(experiment_dir, "scores.txt")
-        with codecs.open(exp_scores_path, 'a+', encoding="utf-8") as out_file:
-            out_file.write(
-                f"{seed},{dev_precision},{dev_recall},{dev_f1},{test_precision},{test_recall},{test_f1}\n")
+            dev_labels_path = os.path.join(experiment_dir, "dev_labels.txt")
+            dev_probas_path = os.path.join(experiment_dir, "dev_probas.txt")
+            test_labels_path = os.path.join(experiment_dir, "test_labels.txt")
+            test_probas_path = os.path.join(experiment_dir, "test_probas.txt")
 
-        dev_labels_path = os.path.join(experiment_dir, "dev_labels.txt")
-        dev_probas_path = os.path.join(experiment_dir, "dev_probas.txt")
-        test_labels_path = os.path.join(experiment_dir, "test_labels.txt")
-        test_probas_path = os.path.join(experiment_dir, "test_probas.txt")
+            save_labels_probas(dev_labels_path, dev_probas_path, dev_pred_labels, dev_pred_probas)
+            save_labels_probas(test_labels_path, test_probas_path, test_pred_labels, test_pred_probas)
 
-        save_labels_probas(dev_labels_path, dev_probas_path, dev_pred_labels, dev_pred_probas)
-        save_labels_probas(test_labels_path, test_probas_path, test_pred_labels, test_pred_probas)
-
-        bert_classifier = bert_classifier.cpu()
-        bert_text_encoder = bert_text_encoder.cpu()
-        del bert_classifier
-        del bert_text_encoder
+            bert_classifier = bert_classifier.cpu()
+            bert_text_encoder = bert_text_encoder.cpu()
+            del bert_classifier
+            del bert_text_encoder
 
 
 if __name__ == '__main__':
