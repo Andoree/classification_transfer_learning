@@ -764,7 +764,7 @@ def main():
 
             save_labels_probas(dev_labels_path, dev_probas_path, dev_pred_labels, dev_pred_probas)
             save_labels_probas(test_labels_path, test_probas_path, test_pred_labels, test_pred_probas)
-            for i, extra_test_dataset in extra_test_datasets_list:
+            for i, extra_test_dataset in enumerate(extra_test_datasets_list):
                 extra_test_loader = torch.utils.data.DataLoader(
                     extra_test_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
                 )
