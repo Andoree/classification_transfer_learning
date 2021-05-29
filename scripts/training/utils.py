@@ -77,7 +77,7 @@ def save_labels_probas(labels_path, probas_path, labels, probas):
 def write_hyperparams(args, output_path):
     with codecs.open(output_path, 'w+', encoding="utf-8") as out_file:
         for key, value in vars(args).items():
-            out_file.write(f"{key} : {value}")
+            out_file.write(f"{key} : {value}\n")
         out_file.flush()
 
 
