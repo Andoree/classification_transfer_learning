@@ -479,6 +479,7 @@ def main():
     parser.add_argument('--train_subsets_min_size', type=int, default=250)
     parser.add_argument('--train_subsets_max_size', type=int, default=-1)
     parser.add_argument('--train_subsets_step', type=int, default=250)
+    parser.add_argument('--extra_test_sets', default=None, type=str, nargs='+')
     args = parser.parse_args()
 
     max_length = args.max_length
@@ -495,6 +496,7 @@ def main():
     model_type = args.model_type
     mask_drug_flag = args.mask_drug
     use_train_subsets = args.use_train_subsets
+    extra_test_sets = args.extra_test_sets
     drug_sampling_type = args.drug_sampling_type
     drug_features_paths = args.drug_features_paths
     output_dir = args.output_dir
@@ -602,6 +604,19 @@ def main():
                                         drug_features_size=drug_features_size,
                                         drugs_dictionary=drugs_dictionary, molecule_tokenizer=chemberta_tokenizer,
                                         drug_text_emb_dict=drug_str_emb_dict, sampling_type=drug_sampling_type, )
+    extra_test_datasets_list = []
+    if extra_test_sets is not None:
+        for extra_test_set_path in extra_test_sets:
+            extra_test_df = pd.read_csv(extra_test_set_path, sep='\t', )
+            extra_test_tweets_dataset = TweetsDataset(extra_test_df, text_tokenizer, text_max_length=max_length,
+                                                      drug_features_list=drug_features_dicts_list,
+                                                      drug_features_size=drug_features_size,
+                                                      drugs_dictionary=drugs_dictionary,
+                                                      molecule_tokenizer=chemberta_tokenizer,
+                                                      drug_text_emb_dict=drug_str_emb_dict,
+                                                      sampling_type=drug_sampling_type, )
+            extra_test_datasets_list.append(extra_test_tweets_dataset)
+
     if apply_upsampling:
         positive_class_weight = args.upsampling_weight
         assert positive_class_weight is not None
@@ -749,6 +764,23 @@ def main():
 
             save_labels_probas(dev_labels_path, dev_probas_path, dev_pred_labels, dev_pred_probas)
             save_labels_probas(test_labels_path, test_probas_path, test_pred_labels, test_pred_probas)
+            for i, extra_test_dataset in extra_test_datasets_list:
+                extra_test_loader = torch.utils.data.DataLoader(
+                    extra_test_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
+                )
+                ex_true_labels, ex_test_pred_labels, ex_test_pred_probas = predict(bert_classifier, extra_test_loader,
+                                                                                   use_drug_embeddings,
+                                                                                   drug_features_size=drug_features_size)
+                assert len(ex_test_pred_labels) == len(ex_true_labels)
+                assert len(ex_test_pred_labels) == len(ex_test_pred_probas)
+                ex_test_precision = precision_score(ex_true_labels, ex_test_pred_labels)
+                ex_test_recall = recall_score(ex_true_labels, ex_test_pred_labels)
+                ex_test_f1 = f1_score(ex_true_labels, ex_test_pred_labels)
+                print(f"Extra test {i}: {ex_test_precision},{ex_test_recall},{ex_test_f1}")
+
+                ex_test_labels_path = os.path.join(experiment_dir, f"test_labels_{i}.txt")
+                ex_test_probas_path = os.path.join(experiment_dir, f"test_probas_{i}.txt")
+                save_labels_probas(ex_test_labels_path, ex_test_probas_path, ex_test_pred_labels, ex_test_pred_probas)
 
             bert_classifier = bert_classifier.cpu()
             bert_text_encoder = bert_text_encoder.cpu()
