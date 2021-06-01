@@ -82,11 +82,14 @@ def main():
     parser.add_argument('--data_paths', nargs='+',
                         default=[r"../evaluation/mean_std_scores/mean_ru_nodrug_train_subsets.txt",
                                  r"../evaluation/mean_std_scores/mean_ru_drug_train_subsets.txt"])
-
-    parser.add_argument('--output_path', default=r"ru_train_subsets.txt")
+    parser.add_argument('--labels', nargs='+',
+                        default=[r"No drug",
+                                 r"Molbert"])
+    parser.add_argument('--output_path', default=r"plots/ru_train_subsets.png")
     args = parser.parse_args()
 
     data_path_list = args.data_paths
+    labels = args.labels
     output_path = args.output_path
 
     output_dir = os.path.dirname(output_path)
@@ -97,11 +100,19 @@ def main():
 
     for data_path in data_path_list:
         data_df = pd.read_csv(data_path)
+        data_df.sort_values(by="train_size", inplace=True)
         train_sizes = data_df.train_size.values
         test_f1_scores = data_df.test_f.values
         data_list.append((train_sizes, test_f1_scores))
     for i, (x, y) in enumerate(data_list):
-        line = plt.plot(x, y, label=str(i), )
+        print(len(x))
+        print(len(y))
+        label = labels[i]
+        line = plt.plot(x, y, label=label)
+    plt.legend()
+    # for t in data_list:
+    #     t.sort(key=lambda x: x[0])
+    plt.savefig(output_path)
     plt.show()
 
 
