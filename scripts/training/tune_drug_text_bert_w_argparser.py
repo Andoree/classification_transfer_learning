@@ -415,9 +415,7 @@ class DrugWithAttentionBertClassifierV2(nn.Module):
         self.bert_text_encoder = bert_text_encoder
         text_bert_hidden_dim = bert_text_encoder.config.hidden_size
         num_attention_heads = text_bert_hidden_dim // 64
-        self.cross_attention_layer = BertCrossattLayer(text_bert_hidden_dim, drug_features_dim,
-                                                       cross_att_attention_dropout, cross_att_hidden_dropout,
-                                                       num_attention_heads=num_attention_heads)
+
         if text_bert_hidden_dim == drug_features_dim:
             self.resize_chem = True
         else:
@@ -428,6 +426,10 @@ class DrugWithAttentionBertClassifierV2(nn.Module):
             self.chem_resize_weights = nn.Parameter(chem_resize_weights, requires_grad=True)
             nn.init.kaiming_uniform_(self.chem_resize_weights, nonlinearity="tanh")
             self.tanh_f = nn.Tanh()
+            drug_features_dim = text_bert_hidden_dim
+        self.cross_attention_layer = BertCrossattLayer(text_bert_hidden_dim, drug_features_dim,
+                                                       cross_att_attention_dropout, cross_att_hidden_dropout,
+                                                       num_attention_heads=num_attention_heads)
 
         self.classifier = nn.Sequential(
             nn.Dropout(p=classifier_dropout),
