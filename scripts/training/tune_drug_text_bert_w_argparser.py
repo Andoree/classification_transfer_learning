@@ -416,7 +416,7 @@ class DrugWithAttentionBertClassifierV2(nn.Module):
         text_bert_hidden_dim = bert_text_encoder.config.hidden_size
         num_attention_heads = text_bert_hidden_dim // 64
 
-        if text_bert_hidden_dim == drug_features_dim:
+        if text_bert_hidden_dim != drug_features_dim:
             self.resize_chem = True
         else:
             self.resize_chem = False
