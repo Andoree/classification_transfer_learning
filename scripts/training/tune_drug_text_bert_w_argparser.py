@@ -407,6 +407,56 @@ class DrugWithAttentionBertClassifier(nn.Module):
         return proba
 
 
+class DrugWithAttentionBertClassifierV2(nn.Module):
+    def __init__(self, bert_text_encoder, drug_features_dim, cross_att_attention_dropout,
+                 cross_att_hidden_dropout, classifier_dropout):
+        super().__init__()
+
+        self.bert_text_encoder = bert_text_encoder
+        text_bert_hidden_dim = bert_text_encoder.config.hidden_size
+        num_attention_heads = text_bert_hidden_dim // 64
+        self.cross_attention_layer = BertCrossattLayer(text_bert_hidden_dim, drug_features_dim,
+                                                       cross_att_attention_dropout, cross_att_hidden_dropout,
+                                                       num_attention_heads=num_attention_heads)
+        if text_bert_hidden_dim == drug_features_dim:
+            self.resize_chem = True
+        else:
+            self.resize_chem = False
+
+        if self.resize_chem:
+            chem_resize_weights = torch.Tensor(drug_features_dim, text_bert_hidden_dim)
+            self.chem_resize_weights = nn.Parameter(chem_resize_weights, requires_grad=True)
+            nn.init.kaiming_uniform_(self.chem_resize_weights, nonlinearity="tanh")
+            self.tanh_f = nn.Tanh()
+
+        self.classifier = nn.Sequential(
+            nn.Dropout(p=classifier_dropout),
+            nn.GELU(),
+            nn.Linear(text_bert_hidden_dim, text_bert_hidden_dim),
+            nn.Dropout(p=classifier_dropout),
+            nn.GELU(),
+            nn.Linear(text_bert_hidden_dim, 1),
+        )
+
+    def forward(self, inputs, attention_mask, drug_features):
+        text_last_hidden_states = self.bert_text_encoder(inputs, attention_mask=attention_mask,
+                                                         return_dict=True)['last_hidden_state']
+
+        text_cls_embeddings = torch.stack([elem[0, :] for elem in text_last_hidden_states])
+        if self.resize_chem:
+            drug_features = self.tanh_f(torch.matmul(drug_features, self.chem_resize_weights))
+        unsq_text_cls_embeddings = text_cls_embeddings.unsqueeze(1)
+        drug_features = drug_features.unsqueeze(1)
+        context_tensor = torch.cat((unsq_text_cls_embeddings, drug_features), dim=1)
+
+        cross_attention_output = self.cross_attention_layer(input_tensor=text_last_hidden_states,
+                                                            ctx_tensor=context_tensor, )
+        cross_att_output_cls_embs = torch.stack([elem[0, :] for elem in cross_attention_output])
+        proba = self.classifier(cross_att_output_cls_embs)
+
+        return proba
+
+
 class DrugGMUBertClassifier(nn.Module):
     def __init__(self, bert_text_encoder, drug_features_dim, classifier_dropout):
         super().__init__()
@@ -719,6 +769,14 @@ def main():
                                                                   cross_att_attention_dropout=crossatt_dropout,
                                                                   cross_att_hidden_dropout=crossatt_hidden_dropout,
                                                                   classifier_dropout=dropout_p).to(device)
+            elif model_type == "att2":
+                crossatt_dropout = args.crossatt_dropout
+                crossatt_hidden_dropout = args.crossatt_hidden_dropout
+                bert_classifier = DrugWithAttentionBertClassifierV2(bert_text_encoder=bert_text_encoder,
+                                                                    drug_features_dim=drug_features_size,
+                                                                    cross_att_attention_dropout=crossatt_dropout,
+                                                                    cross_att_hidden_dropout=crossatt_hidden_dropout,
+                                                                    classifier_dropout=dropout_p).to(device)
             elif model_type == "gmu":
                 bert_classifier = DrugGMUBertClassifier(bert_text_encoder=bert_text_encoder,
                                                         drug_features_dim=drug_features_size,
