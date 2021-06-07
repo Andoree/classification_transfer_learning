@@ -685,12 +685,12 @@ def main():
 
     seeds_list = [0, 1, 2, 3, 5, 7, 11, 13, 21, 42]
 
-    setup_path = os.path.join(output_dir,
-                              f"exp_{freeze_embeddings_layer}_{freeze_layer_count}{exp_description}/setup_descr.txt")
-    setup_dir = os.path.dirname(setup_path)
-    if not os.path.exists(setup_dir) and setup_dir != '':
-        os.makedirs(setup_dir)
-    write_hyperparams(args, setup_path)
+    # setup_path = os.path.join(output_dir,
+    #                           f"exp_{freeze_embeddings_layer}_{freeze_layer_count}{exp_description}/setup_descr.txt")
+    # setup_dir = os.path.dirname(setup_path)
+    # if not os.path.exists(setup_dir) and setup_dir != '':
+    #     os.makedirs(setup_dir)
+    # write_hyperparams(args, setup_path)
 
     if use_train_subsets:
         train_subsets_min_size = args.train_subsets_min_size
@@ -703,6 +703,12 @@ def main():
     else:
         train_range = [train_size, ]
     for train_size in train_range:
+        setup_path = os.path.join(output_dir,
+                                  f"exp_{freeze_embeddings_layer}_{freeze_layer_count}{exp_description}_train_{train_size}/setup_descr.txt")
+        setup_dir = os.path.dirname(setup_path)
+        if not os.path.exists(setup_dir) and setup_dir != '':
+            os.makedirs(setup_dir)
+        write_hyperparams(args, setup_path)
         print(f"Train subset size: {train_size}")
         if use_train_subsets:
             drug_id_tweet_ids_dict, nan_drug_tweet_ids = create_drug_id_tweet_ids_dict(train_df)
