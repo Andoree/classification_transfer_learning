@@ -488,6 +488,44 @@ class DrugGMUBertClassifier(nn.Module):
         return proba
 
 
+class CrossModalityBertClassifier(nn.Module):
+    def __init__(self, bert_text_encoder, bert_molecule_encoder, classifier_dropout, cross_att_attention_dropout,
+                 cross_att_hidden_dropout, ):
+        super().__init__()
+
+        self.bert_text_encoder = bert_text_encoder
+        self.bert_molecule_encoder = bert_molecule_encoder
+        text_bert_hidden_dim = bert_text_encoder.config.hidden_size
+        molecule_bert_hidden_dim = bert_molecule_encoder.config.hidden_size
+        num_attention_heads = text_bert_hidden_dim // 64
+        self.cross_attention_layer = BertCrossattLayer(text_bert_hidden_dim, molecule_bert_hidden_dim,
+                                                       cross_att_attention_dropout, cross_att_hidden_dropout,
+                                                       num_attention_heads=num_attention_heads)
+        classifier_input_size = text_bert_hidden_dim
+
+        self.classifier = nn.Sequential(
+            nn.Dropout(p=classifier_dropout),
+            nn.GELU(),
+            nn.Linear(classifier_input_size, text_bert_hidden_dim),
+            nn.Dropout(p=classifier_dropout),
+            nn.GELU(),
+            nn.Linear(text_bert_hidden_dim, 1),
+        )
+
+    def forward(self, text_inputs, text_attention_mask, molecule_inputs, molecule_attention_mask, drug_features=None):
+        text_last_hidden_states = self.bert_text_encoder(text_inputs, attention_mask=text_attention_mask,
+                                                         return_dict=True)['last_hidden_state']
+        molecule_last_hidden_states = \
+            self.bert_molecule_encoder(molecule_inputs, attention_mask=molecule_attention_mask,
+                                       return_dict=True)['last_hidden_state']
+        cross_attention_output = self.cross_attention_layer(input_tensor=text_last_hidden_states,
+                                                            ctx_tensor=molecule_last_hidden_states, )
+        cross_att_output_cls_embs = torch.stack([elem[0, :] for elem in cross_attention_output])
+
+        proba = self.classifier(cross_att_output_cls_embs)
+        return proba
+
+
 def clear():
     os.system('cls')
 
@@ -531,6 +569,7 @@ def main():
     parser.add_argument('--train_subsets_min_size', type=int, default=250)
     parser.add_argument('--train_subsets_max_size', type=int, default=-1)
     parser.add_argument('--train_subsets_step', type=int, default=250)
+    parser.add_argument('--chem_encoder_name', required=False)
     parser.add_argument('--extra_test_sets', default=None, type=str, nargs='+')
     args = parser.parse_args()
 
@@ -551,6 +590,7 @@ def main():
     extra_test_sets = args.extra_test_sets
     drug_sampling_type = args.drug_sampling_type
     drug_features_paths = args.drug_features_paths
+    chem_encoder_name = args.chem_encoder_name
     output_dir = args.output_dir
 
     if not os.path.exists(output_dir) and output_dir != '':
@@ -638,6 +678,9 @@ def main():
         drugs_dictionary = load_drugs_dict(drugs_dict_path)
 
     chemberta_tokenizer = None
+    if chem_encoder_name is not None:
+        chemberta_tokenizer = AutoTokenizer.from_pretrained(f"./models/{chem_encoder_name}/model", )
+
     train_drug_sampling_type = drug_sampling_type
     train_tweets_dataset = TweetsDataset(train_df, text_tokenizer, text_max_length=max_length,
                                          drugs_dictionary=drugs_dictionary, drug_features_list=drug_features_dicts_list,
@@ -789,6 +832,23 @@ def main():
                 bert_classifier = DrugGMUBertClassifier(bert_text_encoder=bert_text_encoder,
                                                         drug_features_dim=drug_features_size,
                                                         classifier_dropout=dropout_p).to(device)
+            elif model_type == "cross-attention":
+                cross_att_attention_dropout = args.crossatt_dropout
+                cross_att_hidden_dropout = args.crossatt_hidden_dropout
+                chem_encoder_name = args.chem_encoder_name
+                chem_encoder = AutoModel.from_pretrained(f"./models/{chem_encoder_name}/model", ).to(device)
+                print("#Trainable chem encoder params: ",
+                      sum(p.numel() for p in chem_encoder.parameters() if p.requires_grad))
+                for param in chem_encoder.parameters():
+                    param.requires_grad = False
+                use_drug_embeddings = False
+                cross_att_flag = True
+                bert_classifier = CrossModalityBertClassifier(bert_text_encoder=bert_text_encoder,
+                                                              bert_molecule_encoder=chem_encoder,
+                                                              classifier_dropout=dropout_p,
+                                                              cross_att_attention_dropout=cross_att_attention_dropout,
+                                                              cross_att_hidden_dropout=cross_att_hidden_dropout).to(
+                    device)
             else:
                 raise ValueError(f"Invalid model type: {model_type}")
             checkpoint_name = f"{model_type}_{text_encoder_name.split('/')[-1]}"
