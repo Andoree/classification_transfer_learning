@@ -570,6 +570,7 @@ def main():
     parser.add_argument('--train_subsets_max_size', type=int, default=-1)
     parser.add_argument('--train_subsets_step', type=int, default=250)
     parser.add_argument('--chem_encoder_name', required=False)
+    parser.add_argument('--checkpoint_path', required=False)
     parser.add_argument('--extra_test_sets', default=None, type=str, nargs='+')
     args = parser.parse_args()
 
@@ -591,6 +592,7 @@ def main():
     drug_sampling_type = args.drug_sampling_type
     drug_features_paths = args.drug_features_paths
     chem_encoder_name = args.chem_encoder_name
+    checkpoint_path = args.checkpoint_path
     output_dir = args.output_dir
 
     if not os.path.exists(output_dir) and output_dir != '':
@@ -853,6 +855,9 @@ def main():
                     device)
             else:
                 raise ValueError(f"Invalid model type: {model_type}")
+            if checkpoint_path is not None:
+                bert_classifier.load_state_dict(torch.load(checkpoint_path))
+                print(f"Succesfully initialized from checkpoint:\n{checkpoint_path}")
             checkpoint_name = f"{model_type}_{text_encoder_name.split('/')[-1]}"
             model_save_dir = os.path.join(output_dir,
                                           f"exp_{freeze_embeddings_layer}_{freeze_layer_count}{exp_description}_train_{train_size}/")
