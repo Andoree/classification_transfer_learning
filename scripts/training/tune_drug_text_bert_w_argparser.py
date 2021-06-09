@@ -808,7 +808,6 @@ def main():
                 test_tweets_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
             )
 
-
             torch.manual_seed(seed)
             use_drug_embeddings = False
             if model_type == "simple":
@@ -863,7 +862,8 @@ def main():
                                  cross_att_flag=cross_att_flag, drug_features_size=drug_features_size)
 
             true_labels, dev_pred_labels, dev_pred_probas = predict(bert_classifier, dev_loader, use_drug_embeddings,
-                                                                    drug_features_size=drug_features_size)
+                                                                    drug_features_size=drug_features_size,
+                                                                    cross_att_flag=cross_att_flag)
             assert len(dev_pred_labels) == len(true_labels)
             assert len(dev_pred_labels) == len(dev_pred_probas)
             dev_precision = precision_score(true_labels, dev_pred_labels)
@@ -873,7 +873,8 @@ def main():
             print(f"{dev_precision},{dev_recall},{dev_f1}")
 
             true_labels, test_pred_labels, test_pred_probas = predict(bert_classifier, test_loader, use_drug_embeddings,
-                                                                      drug_features_size=drug_features_size)
+                                                                      drug_features_size=drug_features_size,
+                                                                      cross_att_flag=cross_att_flag)
             assert len(test_pred_labels) == len(true_labels)
             assert len(test_pred_labels) == len(test_pred_probas)
             test_precision = precision_score(true_labels, test_pred_labels)
@@ -899,7 +900,8 @@ def main():
                 )
                 ex_true_labels, ex_test_pred_labels, ex_test_pred_probas = predict(bert_classifier, extra_test_loader,
                                                                                    use_drug_embeddings,
-                                                                                   drug_features_size=drug_features_size)
+                                                                                   drug_features_size=drug_features_size,
+                                                                                   cross_att_flag=cross_att_flag)
                 assert len(ex_test_pred_labels) == len(ex_true_labels)
                 assert len(ex_test_pred_labels) == len(ex_test_pred_probas)
                 ex_test_precision = precision_score(ex_true_labels, ex_test_pred_labels)
