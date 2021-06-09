@@ -839,8 +839,8 @@ def main():
                 cross_att_hidden_dropout = args.crossatt_hidden_dropout
                 chem_encoder_name = args.chem_encoder_name
                 chem_encoder = AutoModel.from_pretrained(f"./models/{chem_encoder_name}/model", ).to(device)
-                for param in chem_encoder.parameters():
-                    param.requires_grad = False
+                #for param in chem_encoder.parameters():
+                #    param.requires_grad = False
                 print("#Trainable chem encoder params: ",
                       sum(p.numel() for p in chem_encoder.parameters() if p.requires_grad))
                 use_drug_embeddings = False
