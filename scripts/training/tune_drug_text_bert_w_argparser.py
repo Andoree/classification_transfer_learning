@@ -678,7 +678,9 @@ def main():
         drugs_dictionary = load_drugs_dict(drugs_dict_path)
 
     chemberta_tokenizer = None
+    cross_att_flag = False
     if chem_encoder_name is not None:
+        cross_att_flag = True
         chemberta_tokenizer = AutoTokenizer.from_pretrained(f"./models/{chem_encoder_name}/model", )
 
     train_drug_sampling_type = drug_sampling_type
@@ -805,7 +807,7 @@ def main():
             test_loader = torch.utils.data.DataLoader(
                 test_tweets_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
             )
-            cross_att_flag = False
+
 
             torch.manual_seed(seed)
             use_drug_embeddings = False
