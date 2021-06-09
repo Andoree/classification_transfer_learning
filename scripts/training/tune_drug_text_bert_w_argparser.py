@@ -833,6 +833,7 @@ def main():
                                                         drug_features_dim=drug_features_size,
                                                         classifier_dropout=dropout_p).to(device)
             elif model_type == "cross-attention":
+                cross_att_flag = True
                 cross_att_attention_dropout = args.crossatt_dropout
                 cross_att_hidden_dropout = args.crossatt_hidden_dropout
                 chem_encoder_name = args.chem_encoder_name
