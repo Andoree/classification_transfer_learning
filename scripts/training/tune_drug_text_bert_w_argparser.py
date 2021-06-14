@@ -753,7 +753,7 @@ def main():
     else:
         train_range = [train_size, ]
     if use_train_fracs:
-        train_fracs_list = [0.25, 0.5, 0.75, 1.0]
+        train_fracs_list = [1.0]
     else:
         train_fracs_list = [1.0]
 
@@ -791,8 +791,11 @@ def main():
                 shuffle = True
 
         if use_train_fracs:
-            train_subset_df, _ = train_test_split(train_df, random_state=42, train_size=train_frac,
-                                                  stratify=train_df["class"])
+            if train_frac == 1.0:
+                train_subset_df = train_df.sample(frac=1.0, random_state=42)
+            else:
+                train_subset_df, _ = train_test_split(train_df, random_state=42, train_size=train_frac,
+                                                      stratify=train_df["class"])
             train_tweets_dataset = TweetsDataset(train_subset_df, text_tokenizer, text_max_length=max_length,
                                                  drugs_dictionary=drugs_dictionary,
                                                  drug_features_list=drug_features_dicts_list,
