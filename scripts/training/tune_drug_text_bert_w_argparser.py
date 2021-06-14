@@ -777,6 +777,19 @@ def main():
                                                  drug_features_size=drug_features_size,
                                                  sampling_type=train_drug_sampling_type,
                                                  drug_text_emb_dict=drug_str_emb_dict)
+            if apply_upsampling:
+                positive_class_weight = args.upsampling_weight
+                assert positive_class_weight is not None
+                train_weights = create_dataset_weights(train_tweets_dataset, positive_class_weight)
+                print("Sampling weights:", set(train_weights))
+                train_weights = torch.DoubleTensor(train_weights)
+                sampler = torch.utils.data.sampler.WeightedRandomSampler(train_weights, len(train_weights))
+                shuffle = False
+            else:
+                positive_class_weight = 0.0
+                sampler = None
+                shuffle = True
+
         if use_train_fracs:
             train_subset_df, _ = train_test_split(train_df, random_state=42, train_size=train_frac,
                                                   stratify=train_df["class"])
@@ -787,6 +800,18 @@ def main():
                                                  drug_features_size=drug_features_size,
                                                  sampling_type=train_drug_sampling_type,
                                                  drug_text_emb_dict=drug_str_emb_dict)
+            if apply_upsampling:
+                positive_class_weight = args.upsampling_weight
+                assert positive_class_weight is not None
+                train_weights = create_dataset_weights(train_tweets_dataset, positive_class_weight)
+                print("Sampling weights:", set(train_weights))
+                train_weights = torch.DoubleTensor(train_weights)
+                sampler = torch.utils.data.sampler.WeightedRandomSampler(train_weights, len(train_weights))
+                shuffle = False
+            else:
+                positive_class_weight = 0.0
+                sampler = None
+                shuffle = True
 
         for seed in seeds_list:
             experiment_dir = f"exp_{freeze_embeddings_layer}_{freeze_layer_count}{exp_description}_train_frac_{train_frac}/seed_{seed}"
