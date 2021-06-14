@@ -10,6 +10,7 @@ import torch
 import torch.optim as optim
 from attention import BertCrossattLayer, GatedMultimodalLayer
 from sklearn.metrics import precision_score, f1_score, recall_score
+from sklearn.model_selection import train_test_split
 from torch import nn
 from torch.utils.data import Dataset
 from tqdm import tqdm
@@ -572,6 +573,7 @@ def main():
     parser.add_argument('--chem_encoder_name', required=False)
     parser.add_argument('--checkpoint_path', required=False)
     parser.add_argument('--extra_test_sets', default=None, type=str, nargs='+')
+    parser.add_argument('--use_train_fracs', action="store_true")
     args = parser.parse_args()
 
     max_length = args.max_length
@@ -592,6 +594,7 @@ def main():
     drug_sampling_type = args.drug_sampling_type
     drug_features_paths = args.drug_features_paths
     chem_encoder_name = args.chem_encoder_name
+    use_train_fracs = args.use_train_fracs
     checkpoint_path = args.checkpoint_path
     output_dir = args.output_dir
 
@@ -749,9 +752,14 @@ def main():
         train_range = inclusive_range(train_subsets_min_size, train_subsets_max_size, train_subsets_step, )
     else:
         train_range = [train_size, ]
-    for train_size in train_range:
+    if use_train_fracs:
+        train_fracs_list = [0.25, 0.5, 0.75, 1.0]
+    else:
+        train_fracs_list = [1.0]
+
+    for train_frac in train_fracs_list:
         setup_path = os.path.join(output_dir,
-                                  f"exp_{freeze_embeddings_layer}_{freeze_layer_count}{exp_description}_train_{train_size}/setup_descr.txt")
+                                  f"exp_{freeze_embeddings_layer}_{freeze_layer_count}{exp_description}_train_frac_{train_frac}/setup_descr.txt")
         setup_dir = os.path.dirname(setup_path)
         if not os.path.exists(setup_dir) and setup_dir != '':
             os.makedirs(setup_dir)
@@ -769,9 +777,19 @@ def main():
                                                  drug_features_size=drug_features_size,
                                                  sampling_type=train_drug_sampling_type,
                                                  drug_text_emb_dict=drug_str_emb_dict)
+        if use_train_fracs:
+            train_subset_df, _ = train_test_split(train_df, random_state=42, train_size=train_frac,
+                                                  stratify=train_df["class"])
+            train_tweets_dataset = TweetsDataset(train_subset_df, text_tokenizer, text_max_length=max_length,
+                                                 drugs_dictionary=drugs_dictionary,
+                                                 drug_features_list=drug_features_dicts_list,
+                                                 molecule_tokenizer=chemberta_tokenizer,
+                                                 drug_features_size=drug_features_size,
+                                                 sampling_type=train_drug_sampling_type,
+                                                 drug_text_emb_dict=drug_str_emb_dict)
 
         for seed in seeds_list:
-            experiment_dir = f"exp_{freeze_embeddings_layer}_{freeze_layer_count}{exp_description}_train_{train_size}/seed_{seed}"
+            experiment_dir = f"exp_{freeze_embeddings_layer}_{freeze_layer_count}{exp_description}_train_frac_{train_frac}/seed_{seed}"
             experiment_dir = os.path.join(output_dir, experiment_dir)
             if not os.path.exists(experiment_dir) and experiment_dir != '':
                 os.makedirs(experiment_dir)
@@ -841,7 +859,7 @@ def main():
                 cross_att_hidden_dropout = args.crossatt_hidden_dropout
                 chem_encoder_name = args.chem_encoder_name
                 chem_encoder = AutoModel.from_pretrained(f"./models/{chem_encoder_name}/model", ).to(device)
-                #for param in chem_encoder.parameters():
+                # for param in chem_encoder.parameters():
                 #    param.requires_grad = False
                 print("#Trainable chem encoder params: ",
                       sum(p.numel() for p in chem_encoder.parameters() if p.requires_grad))
@@ -860,7 +878,7 @@ def main():
                 print(f"Succesfully initialized from checkpoint:\n{checkpoint_path}")
             checkpoint_name = f"{model_type}_{text_encoder_name.split('/')[-1]}"
             model_save_dir = os.path.join(output_dir,
-                                          f"exp_{freeze_embeddings_layer}_{freeze_layer_count}{exp_description}_train_{train_size}/")
+                                          f"exp_{freeze_embeddings_layer}_{freeze_layer_count}{exp_description}_train_frac_{train_frac}/")
             train_evaluate_model(seed, bert_classifier, use_drug_embeddings, criterion, learning_rate, train_loader,
                                  dev_loader, test_loader, num_epochs, output_evaluation_path, model_save_dir,
                                  checkpoint_name,
