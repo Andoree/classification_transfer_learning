@@ -848,7 +848,7 @@ def main():
 
             train_loader = torch.utils.data.DataLoader(
                 train_tweets_dataset, batch_size=batch_size, num_workers=num_workers, sampler=sampler, shuffle=shuffle,
-                drop_last=True,
+                drop_last=False,
             )
             dev_loader = torch.utils.data.DataLoader(
                 dev_tweets_dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, drop_last=False,
