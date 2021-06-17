@@ -615,7 +615,7 @@ def main():
     parser.add_argument('--checkpoint_path', required=False)
     parser.add_argument('--extra_test_sets', default=None, type=str, nargs='+')
     parser.add_argument('--use_train_fracs', action="store_true")
-    parser.add_argument('--num_attention_heads', required=False, int=-1)
+    parser.add_argument('--num_attention_heads', required=False, type=int)
     args = parser.parse_args()
 
     max_length = args.max_length
