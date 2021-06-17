@@ -470,6 +470,15 @@ class DrugWithAttentionBertClassifierV3(nn.Module):
         if num_attention_heads == -1:
             num_attention_heads = text_bert_hidden_dim // 64
 
+        if text_bert_hidden_dim != drug_features_dim:
+            self.resize_chem = True
+        else:
+            self.resize_chem = False
+
+        if self.resize_chem:
+            self.chem_resize_layer = nn.Linear(drug_features_dim, text_bert_hidden_dim)
+            drug_features_dim = text_bert_hidden_dim
+
         self.attention = BertAttention(text_hidden_size=text_bert_hidden_dim, molecule_hidden_size=drug_features_dim,
                                        attention_probs_dropout_prob=0.0,
                                        num_attention_heads=num_attention_heads, )
@@ -488,11 +497,13 @@ class DrugWithAttentionBertClassifierV3(nn.Module):
                                                          return_dict=True)['last_hidden_state']
 
         text_cls_embeddings = torch.stack([elem[0, :] for elem in text_last_hidden_states])
+        if self.resize_chem:
+            drug_features = self.chem_resize_layer(drug_features)
         unsq_text_cls_embeddings = text_cls_embeddings.unsqueeze(1)
         drug_features = drug_features.unsqueeze(1)
         context_tensor = torch.cat((unsq_text_cls_embeddings, drug_features), dim=1)
 
-        attention_output = self.attention(hidden_states=text_last_hidden_states,
+        attention_output = self.attention(hidden_states=unsq_text_cls_embeddings,
                                           context=context_tensor, )
         #cross_att_output_cls_embs = torch.stack([elem[0, :] for elem in attention_output])
         attention_output = attention_output.squeeze(1)
