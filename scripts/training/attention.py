@@ -157,10 +157,10 @@ class GatedMultimodalLayer(nn.Module):
         self.text_modality_dim = text_modality_dim
         self.chem_modality_dim = chem_modality_dim
         self.size_out = size_out
-        if text_modality_dim == size_out:
-            self.resize_text = False
-        else:
-            self.resize_text = True
+        # if text_modality_dim == size_out:
+        #     self.resize_text = False
+        # else:
+        self.resize_text = True
         if chem_modality_dim == size_out:
             self.resize_chem = False
         else:
