@@ -462,12 +462,12 @@ class DrugWithAttentionBertClassifierV2(nn.Module):
 
 class DrugWithAttentionBertClassifierV3(nn.Module):
     def __init__(self, bert_text_encoder, drug_features_dim,
-                 classifier_dropout, num_attention_heads=-1):
+                 classifier_dropout, num_attention_heads=None):
         super().__init__()
 
         self.bert_text_encoder = bert_text_encoder
         text_bert_hidden_dim = bert_text_encoder.config.hidden_size
-        if num_attention_heads == -1:
+        if num_attention_heads is None:
             num_attention_heads = text_bert_hidden_dim // 64
 
         if text_bert_hidden_dim != drug_features_dim:
