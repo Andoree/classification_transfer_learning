@@ -627,7 +627,7 @@ def main():
     parser.add_argument('--extra_test_sets', default=None, type=str, nargs='+')
     parser.add_argument('--use_train_fracs', action="store_true")
     parser.add_argument('--num_attention_heads', required=False, type=int)
-    parser.add_argument('--early_stopping', action="store_false")
+    parser.add_argument('--no_early_stopping', action="store_false")
     args = parser.parse_args()
 
     max_length = args.max_length
@@ -649,7 +649,7 @@ def main():
     drug_features_paths = args.drug_features_paths
     chem_encoder_name = args.chem_encoder_name
     use_train_fracs = args.use_train_fracs
-    early_stopping = args.early_stopping
+    early_stopping = args.no_early_stopping
     checkpoint_path = args.checkpoint_path
     output_dir = args.output_dir
 
