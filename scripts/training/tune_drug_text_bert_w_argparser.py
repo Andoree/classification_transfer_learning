@@ -256,7 +256,7 @@ def train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criteri
 
 def train_evaluate_model(seed, bert_classifier, use_drug_embeddings, criterion, learning_rate, train_loader, dev_loader,
                          test_loader, num_epochs, output_evaluation_path, output_model_dir, model_chkpnt_name,
-                         cross_att_flag=False, drug_features_size=None):
+                         cross_att_flag=False, drug_features_size=None, load_best_ckpt=True):
     torch.manual_seed(seed)
     optimizer = optim.Adam(bert_classifier.parameters(), lr=learning_rate)
     # criterion = nn.BCEWithLogitsLoss()
@@ -265,7 +265,7 @@ def train_evaluate_model(seed, bert_classifier, use_drug_embeddings, criterion, 
     best_epoch = train_evaluate(bert_classifier, train_loader, dev_loader, optimizer, criterion, num_epochs,
                                 use_drug_embeddings, output_ckpt_path, output_evaluation_path,
                                 cross_att_flag=cross_att_flag, drug_features_size=drug_features_size)
-    if best_epoch != -1:
+    if best_epoch != -1 and load_best_ckpt:
         bert_classifier.load_state_dict(torch.load(output_ckpt_path))
 
     true_labels, pred_labels, pred_probas = predict(bert_classifier, train_loader, use_drug_embeddings,
@@ -505,7 +505,7 @@ class DrugWithAttentionBertClassifierV3(nn.Module):
 
         attention_output = self.attention(hidden_states=unsq_text_cls_embeddings,
                                           context=context_tensor, )
-        #cross_att_output_cls_embs = torch.stack([elem[0, :] for elem in attention_output])
+        # cross_att_output_cls_embs = torch.stack([elem[0, :] for elem in attention_output])
         attention_output = attention_output.squeeze(1)
         proba = self.classifier(attention_output)
 
@@ -533,7 +533,7 @@ class DrugGMUBertClassifier(nn.Module):
 
     def forward(self, inputs, attention_mask, drug_features):
         text_last_hidden_states = self.bert_text_encoder(inputs, attention_mask=attention_mask,
-                                                     return_dict=True)['last_hidden_state']
+                                                         return_dict=True)['last_hidden_state']
         text_cls_embeddings = torch.stack([elem[0, :] for elem in text_last_hidden_states])
         multimodal_emb = self.gated_multimodal_layer(text_cls_embeddings, drug_features)
         proba = self.classifier(multimodal_emb)
@@ -627,6 +627,7 @@ def main():
     parser.add_argument('--extra_test_sets', default=None, type=str, nargs='+')
     parser.add_argument('--use_train_fracs', action="store_true")
     parser.add_argument('--num_attention_heads', required=False, type=int)
+    parser.add_argument('--early_stopping', action="store_false")
     args = parser.parse_args()
 
     max_length = args.max_length
@@ -648,6 +649,7 @@ def main():
     drug_features_paths = args.drug_features_paths
     chem_encoder_name = args.chem_encoder_name
     use_train_fracs = args.use_train_fracs
+    early_stopping = args.early_stopping
     checkpoint_path = args.checkpoint_path
     output_dir = args.output_dir
 
@@ -806,8 +808,9 @@ def main():
     else:
         train_range = [train_size, ]
     if use_train_fracs:
-        train_fracs_list = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8,
-                            0.85, 0.9, 0.95, 1.0]
+        # train_fracs_list = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8,
+                            # 0.85, 0.9, 0.95, 1.0]
+        train_fracs_list = [0.25, 0.5, 0.75, 1.0]
     else:
         train_fracs_list = [1.0]
 
@@ -969,9 +972,8 @@ def main():
                                           f"exp_{freeze_embeddings_layer}_{freeze_layer_count}{exp_description}_train_frac_{train_frac}/")
             train_evaluate_model(seed, bert_classifier, use_drug_embeddings, criterion, learning_rate, train_loader,
                                  dev_loader, test_loader, num_epochs, output_evaluation_path, model_save_dir,
-                                 checkpoint_name,
-                                 cross_att_flag=cross_att_flag, drug_features_size=drug_features_size)
-
+                                 checkpoint_name, cross_att_flag=cross_att_flag, drug_features_size=drug_features_size,
+                                 load_best_ckpt=early_stopping)
             true_labels, dev_pred_labels, dev_pred_probas = predict(bert_classifier, dev_loader, use_drug_embeddings,
                                                                     drug_features_size=drug_features_size,
                                                                     cross_att_flag=cross_att_flag)
